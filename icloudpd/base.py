@@ -139,8 +139,8 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option(
     "--folder-structure",
     help="Folder structure (default: {:%Y/%m/%d}). "
-    "If set to 'none' all photos will just be placed into the download directory"
-    "If set to 'album' photos will be placed in a folder named as the album into the download directory",
+    "If set to 'none' all photos will just be placed into the download directory, "
+    "if set to 'album' photos will be placed in a folder named as the album into the download directory",
     metavar="<folder_structure>",
     default="{:%Y/%m/%d}",
 )
@@ -278,14 +278,6 @@ def main(
             raise_error_on_2sa,
             client_id=os.environ.get("CLIENT_ID"),
         )
-
-        #icloud = authenticate(
-         #   username,
-         #   password,
-         #   cookie_directory,
-         #   raise_error_on_2sa,
-         #   client_id=os.environ.get("CLIENT_ID"),
-        #)
     except PyiCloud2SARequiredException:
         if notification_script is not None:
             subprocess.call([notification_script])
@@ -322,6 +314,7 @@ def main(
     directory = os.path.normpath(directory)
 
     def download_album(album):
+        logger.info(f"Processing {album} ...")
         photos = icloud.photos.albums[album]
 
         logger.debug(
