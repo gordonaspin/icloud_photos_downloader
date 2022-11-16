@@ -98,8 +98,8 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 )
 @click.option(
     "--include-reserved-albums",
-    help="Download all albums, including the reserved albums:"
-    "All Photos, Time-lapse, Videos, Slo-mo, Bursts, Favorites, Panoramas, Screenshots, Live, Recently Deleted, Hidden",
+    help="Download all albums, including the reserved albums, except All Photos:"
+    "Time-lapse, Videos, Slo-mo, Bursts, Favorites, Panoramas, Screenshots, Live, Recently Deleted, Hidden",
     is_flag=True,
 )
 @click.option(

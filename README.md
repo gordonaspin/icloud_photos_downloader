@@ -8,10 +8,12 @@ This tool is developed and maintained by volunteers (we are always looking for [
 
 ## Install
 
-`icloudpd` is a Python package that can be installed using `pip`:
+`icloudpd` is a Python package that can be installed using `pip`, but it's borked as it only retrieves the first 200 albums in your iCloud library. Use my forked pyicloud implementation https://github.com/gordonaspin/pyicloud:
 
 ``` sh
-pip install icloudpd
+git clone https://github.com/gordonaspin/pyicloud
+cd pyicloud
+pip install .
 ```
 
 > If you need to install Python, see the [Requirements](#requirements) section for instructions.
@@ -39,13 +41,22 @@ Options:
                                   Live Photo video size to download (default:
                                   original)
   --recent INTEGER RANGE          Number of recent photos to download
-                                  (default: download all photos)
+                                  (default: download all photos)  [x>=0]
   --until-found INTEGER RANGE     Download most recently added photos until we
                                   find x number of previously downloaded
                                   consecutive photos (default: download all
-                                  photos)
+                                  photos)  [x>=0]
   -a, --album <album>             Album to download (default: All Photos)
-  -l, --list-albums               Lists the avaliable albums
+  --all-albums                    Download all albums, excluding the reserved
+                                  albums:All Photos, Time-lapse, Videos, Slo-
+                                  mo, Bursts, Favorites, Panoramas,
+                                  Screenshots, Live, Recently Deleted, Hidden
+  --include-reserved-albums       Download all albums, including the reserved
+                                  albums, except All Photos:Time-lapse,
+                                  Videos, Slo-mo, Bursts, Favorites,
+                                  Panoramas, Screenshots, Live, Recently
+                                  Deleted, Hidden
+  -l, --list-albums               Lists the avaliable albums and exits
   --skip-videos                   Don't download any videos (default: Download
                                   all photos and videos)
   --skip-live-photos              Don't download any live photos (default:
@@ -61,7 +72,12 @@ Options:
                                   are already downloaded.)(Does not download
                                   or delete any files.)
   --folder-structure <folder_structure>
-                                  Folder structure (default: {:%Y/%m/%d})
+                                  Folder structure (default: {:%Y/%m/%d}). If
+                                  set to 'none' all photos will just be placed
+                                  into the download directory, if set to
+                                  'album' photos will be placed in a folder
+                                  named as the album into the download
+                                  directory
   --set-exif-datetime             Write the DateTimeOriginal exif tag from
                                   file creation date, if it doesn't exist.
   --smtp-username <smtp_username>
@@ -75,6 +91,7 @@ Options:
   --smtp-host <smtp_host>         Your SMTP server host. Defaults to:
                                   smtp.gmail.com
   --smtp-port <smtp_port>         Your SMTP server port. Default: 587 (Gmail)
+                                  [x>=0]
   --smtp-no-tls                   Pass this flag to disable TLS for SMTP (TLS
                                   is required for Gmail)
   --notification-email <notification_email>
@@ -89,9 +106,11 @@ Options:
                                   prints log messages on separate lines
                                   (Progress bar is disabled by default if
                                   there is no tty attached)
-  --threads-num INTEGER RANGE     Number of cpu threads (default: 1)
+  --threads-num INTEGER RANGE     Number of cpu threads -- deprecated. To be
+                                  removed in future version  [x>=1]
   --version                       Show the version and exit.
   -h, --help                      Show this message and exit.
+
 ```
 
 Example:
@@ -106,7 +125,7 @@ icloudpd --directory ./Photos \
 
 ## Requirements
 
-- Python 3.6+
+- Python 3.10+
 - pip
 
 ### Install Python & pip
