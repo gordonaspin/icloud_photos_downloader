@@ -42,6 +42,7 @@ Options:
                                   original)
   --recent INTEGER RANGE          Number of recent photos to download
                                   (default: download all photos)  [x>=0]
+  --date-since [%Y-%m-%d|%Y-%m-%d-%H:%M:%S]
   --until-found INTEGER RANGE     Download most recently added photos until we
                                   find x number of previously downloaded
                                   consecutive photos (default: download all
