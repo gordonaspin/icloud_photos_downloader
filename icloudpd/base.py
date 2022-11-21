@@ -95,14 +95,13 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 )
 @click.option(
     "--all-albums",
-    help="Download all albums, excluding the reserved albums:"
-    "All Photos, Time-lapse, Videos, Slo-mo, Bursts, Favorites, Panoramas, Screenshots, Live, Recently Deleted, Hidden",
+    help="Download all albums",
     is_flag=True,
 )
 @click.option(
-    "--include-reserved-albums",
-    help="Download all albums, including the reserved albums, except All Photos:"
-    "Time-lapse, Videos, Slo-mo, Bursts, Favorites, Panoramas, Screenshots, Live, Recently Deleted, Hidden",
+    "--exclude-smart-folders",
+    help="Exclude smart folders from listing or download:"
+    "All Photos, Time-lapse, Videos, Slo-mo, Bursts, Favorites, Panoramas, Screenshots, Live, Recently Deleted, Hidden",
     is_flag=True,
 )
 @click.option(
@@ -229,7 +228,7 @@ def main(
         until_found,
         album,
         all_albums,
-        include_reserved_albums,
+        exclude_smart_folders,
         list_albums,
         skip_videos,
         skip_live_photos,
@@ -315,6 +314,8 @@ def main(
     albums = albums_dict.values()  # pragma: no cover
     album_titles = [str(a) for a in albums]
     if list_albums:
+        if exclude_smart_folders:
+            album_titles = [album for album in album_titles if album not in icloud.photos.SMART_FOLDERS.keys()]
         print(*album_titles, sep="\n")
         sys.exit(0)
 
@@ -561,14 +562,12 @@ def main(
         if auto_delete:
             autodelete_photos(icloud, folder_structure, directory)
             
-    reserved_albums = ["All Photos", "Time-lapse", "Videos", "Slo-mo", "Bursts", "Favorites", "Panoramas", "Screenshots", "Live", "Recently Deleted", "Hidden"]
+    #reserved_albums = ["All Photos", "Time-lapse", "Videos", "Slo-mo", "Bursts", "Favorites", "Panoramas", "Screenshots", "Live", "Recently Deleted", "Hidden"]
 
     if all_albums == True:
-        if include_reserved_albums == True:
-            pass
-            #album_titles = [album for album in album_titles if album != "All Photos"]
-        else:
-            album_titles = [album for album in album_titles if album not in reserved_albums]
+        if exclude_smart_folders:
+            album_titles = [album for album in album_titles if album not in icloud.photos.SMART_FOLDERS.keys()]
+        
         for album in album_titles:
             download_album(album)
     else:

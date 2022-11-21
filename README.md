@@ -48,15 +48,11 @@ Options:
                                   consecutive photos (default: download all
                                   photos)  [x>=0]
   -a, --album <album>             Album to download (default: All Photos)
-  --all-albums                    Download all albums, excluding the reserved
-                                  albums:All Photos, Time-lapse, Videos, Slo-
-                                  mo, Bursts, Favorites, Panoramas,
+  --all-albums                    Download all albums
+  --exclude-smart-folders         Exclude smart folders from listing or
+                                  download:All Photos, Time-lapse, Videos,
+                                  Slo-mo, Bursts, Favorites, Panoramas,
                                   Screenshots, Live, Recently Deleted, Hidden
-  --include-reserved-albums       Download all albums, including the reserved
-                                  albums, except All Photos:Time-lapse,
-                                  Videos, Slo-mo, Bursts, Favorites,
-                                  Panoramas, Screenshots, Live, Recently
-                                  Deleted, Hidden
   -l, --list-albums               Lists the avaliable albums and exits
   --skip-videos                   Don't download any videos (default: Download
                                   all photos and videos)
@@ -111,7 +107,6 @@ Options:
                                   removed in future version  [x>=1]
   --version                       Show the version and exit.
   -h, --help                      Show this message and exit.
-
 ```
 
 Example:
