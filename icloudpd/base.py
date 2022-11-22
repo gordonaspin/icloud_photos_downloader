@@ -79,6 +79,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     type=click.IntRange(0),
 )
 @click.option('--date-since',
+    help="Download only assets newer than date-since",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%d-%H:%M:%S"]),
 )
 @click.option(

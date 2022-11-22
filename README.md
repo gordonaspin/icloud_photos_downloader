@@ -43,6 +43,7 @@ Options:
   --recent INTEGER RANGE          Number of recent photos to download
                                   (default: download all photos)  [x>=0]
   --date-since [%Y-%m-%d|%Y-%m-%d-%H:%M:%S]
+                                  Download only assets newer than date-since
   --until-found INTEGER RANGE     Download most recently added photos until we
                                   find x number of previously downloaded
                                   consecutive photos (default: download all
@@ -107,6 +108,7 @@ Options:
                                   removed in future version  [x>=1]
   --version                       Show the version and exit.
   -h, --help                      Show this message and exit.
+
 ```
 
 Example:
