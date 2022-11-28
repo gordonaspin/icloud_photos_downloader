@@ -12,16 +12,14 @@ import json
 import click
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-#import faulthandler
-#faulthandler.enable()
 
-#endif /* NEWSTUFF */
 from tqdm import tqdm
 from tzlocal import get_localzone
 
 from pyicloud.exceptions import PyiCloudAPIResponseException
 from icloudpd.logger import setup_logger
 from pyicloud.exceptions import PyiCloud2SARequiredException
+from pyicloud.exceptions import PyiCloudFailedLoginException
 from pyicloud import PyiCloudService
 from icloudpd import download
 from icloudpd.email_notifications import send_2sa_notification
@@ -275,16 +273,17 @@ def main(
         or notification_email is not None
         or notification_script is not None
     )
+    raise_error_on_2sa = False
     try:
         logger.info("connecting to iCloudService...")
         icloud = PyiCloudService(
             username,
-            password,
-            cookie_directory,
-            raise_error_on_2sa,
-            client_id=os.environ.get("CLIENT_ID"),
-        )
-    except PyiCloud2SARequiredException:
+            password)#,
+            #cookie_directory)#,
+            #raise_error_on_2sa)#,
+            #client_id=os.environ.get("CLIENT_ID"),
+        #)
+    except PyiCloud2SARequiredException as ex:
         if notification_script is not None:
             subprocess.call([notification_script])
         if smtp_username is not None or notification_email is not None:
@@ -296,6 +295,9 @@ def main(
                 smtp_no_tls,
                 notification_email,
             )
+        print(ex)
+    except PyiCloudFailedLoginException as ex:
+        print(ex)
         sys.exit(1)
 
     # Default album is "All Photos", so this is the same as
@@ -303,16 +305,35 @@ def main(
     # After 6 or 7 runs within 1h Apple blocks the API for some time. In that
     # case exit.
     try:
-        logger.info(f"fetching album {album} from iCloudService...")
-        photos = icloud.photos.albums[album]
-    except PyiCloudAPIResponseException as err:
+        logger.info(f"fetching library information from iCloudService...")
+        photos = icloud.photos.all
+    except PyiCloudAPIResponseException as ex:
         # For later: come up with a nicer message to the user. For now take the
         # exception text
-        print(err)
+        print(ex)
         sys.exit(1)
 
-    albums_dict = icloud.photos.albums
-    albums = albums_dict.values()  # pragma: no cover
+    def photos_exception_handler(ex, retries):
+        """Handles session errors in the PhotoAlbum photos iterator"""
+        if "Invalid global session" in str(ex):
+            if retries > constants.MAX_RETRIES:
+                logger.tqdm_write("iCloud re-authentication failed! Please try again later.")
+                raise ex
+            logger.tqdm_write(
+                "Session error, re-authenticating...",
+                logging.ERROR)
+            if retries > 1:
+                # If the first reauthentication attempt failed,
+                # start waiting a few seconds before retrying in case
+                # there are some issues with the Apple servers
+                time.sleep(constants.WAIT_SECONDS * retries)
+            icloud = PyiCloudService(username, password)
+
+    photos.exception_handler = photos_exception_handler
+
+    albums = icloud.photos.albums.values()
+    logger.info(f"there are {len(photos)} assets in {len(albums)} albums in your library")
+
     album_titles = [str(a) for a in albums]
     if list_albums:
         if exclude_smart_folders:
@@ -321,7 +342,7 @@ def main(
         sys.exit(0)
 
     directory = os.path.normpath(directory)
-    global newest_created_date
+    #global newest_created_date
     newest_created_date = 0
 
     if date_since is not None:
@@ -330,28 +351,8 @@ def main(
 
     def download_album(album):
         photos = icloud.photos.albums[album]
-
-        logger.debug(f"{album}: looking up all assets ...")
-
-        def photos_exception_handler(ex, retries):
-            """Handles session errors in the PhotoAlbum photos iterator"""
-            if "Invalid global session" in str(ex):
-                if retries > constants.MAX_RETRIES:
-                    logger.tqdm_write("iCloud re-authentication failed! Please try again later.")
-                    raise ex
-                logger.tqdm_write(
-                    "Session error, re-authenticating...",
-                    logging.ERROR)
-                if retries > 1:
-                    # If the first reauthentication attempt failed,
-                    # start waiting a few seconds before retrying in case
-                    # there are some issues with the Apple servers
-                    time.sleep(constants.WAIT_SECONDS * retries)
-                icloud = PyiCloudService(username, password)
-
-        photos.exception_handler = photos_exception_handler
-
         photos_count = len(photos)
+        logger.info(f"{album}: has {photos_count} assets ...")
 
         # Optional: Only download the x most recent photos.
         if recent is not None:
@@ -388,6 +389,7 @@ def main(
 
         def download_photo(counter, reached_date_since, photo):
             """internal function for actually downloading the photos"""
+            nonlocal newest_created_date
 
             if skip_videos and photo.item_type != "image":
                 logger.set_tqdm_description(f"{album}: skipping {photo.filename}, only downloading photos.")
@@ -396,7 +398,7 @@ def main(
                 logger.set_tqdm_description(f"{album}: skipping {photo.filename}, only downloading photos and videos. (Item type was: {photo.item_type})")
                 return
             
-            global newest_created_date
+            #global newest_created_date
 
             try:
                 created_date = photo.created.astimezone(get_localzone())
