@@ -51,7 +51,7 @@ def download_media(icloud, photo, download_path, size):
             if photo_response:
                 temp_download_path = download_path + ".part"
                 with open(temp_download_path, "wb") as file_obj:
-                    for chunk in photo_response.iter_content(chunk_size=1024):
+                    for chunk in photo_response.iter_content(chunk_size=constants.CHUNK_SIZE):
                         if chunk:
                             file_obj.write(chunk)
                 os.rename(temp_download_path, download_path)
