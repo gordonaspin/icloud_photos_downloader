@@ -34,7 +34,7 @@ def set_utime(download_path, created_date):
 
 def download_media(icloud, photo, download_path, size):
     """Download the photo to path, with retries and error handling"""
-    logger = setup_logger()
+    logger = logging.getLogger("icloudpd")
 
     # get back the directory for the file to be downloaded and create it if not there already
     download_dir = os.path.dirname(download_path)

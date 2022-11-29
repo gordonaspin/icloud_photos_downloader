@@ -32,7 +32,7 @@ class IPDLogger(logging.Logger):
             self.tqdm.write(message)
 
 
-def setup_logger():
+def setup_logger(log_level, disabled):
     """Set up logger and add stdout handler"""
     logging.setLoggerClass(IPDLogger)
     logger = logging.getLogger("icloudpd")
@@ -48,4 +48,18 @@ def setup_logger():
         stdout_handler.setFormatter(formatter)
         stdout_handler.name = "stdoutLogger"
         logger.addHandler(stdout_handler)
+
+    if disabled:
+        logger.disabled = True
+    else:
+        # Need to make sure disabled is reset to the correct value,
+        # because the logger instance is shared between tests.
+        logger.disabled = False
+        if log_level == "debug":
+            logger.setLevel(logging.DEBUG)
+        elif log_level == "info":
+            logger.setLevel(logging.INFO)
+        elif log_level == "error":
+            logger.setLevel(logging.ERROR)
+
     return logger

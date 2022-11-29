@@ -26,6 +26,7 @@ from icloudpd.email_notifications import send_2sa_notification
 from icloudpd.string_helpers import truncate_middle
 from icloudpd.autodelete import autodelete_photos
 from icloudpd.paths import local_download_path
+from icloudpd.paths import build_download_dir
 from icloudpd import exif_datetime
 # Must import the constants object so that we can mock values in tests.
 from icloudpd import constants
@@ -248,20 +249,7 @@ def main(
         threads_num,    # pylint: disable=W0613
 ):
     """Download all iCloud photos to a local directory"""
-
-    logger = setup_logger()
-    if only_print_filenames:
-        logger.disabled = True
-    else:
-        # Need to make sure disabled is reset to the correct value,
-        # because the logger instance is shared between tests.
-        logger.disabled = False
-        if log_level == "debug":
-            logger.setLevel(logging.DEBUG)
-        elif log_level == "info":
-            logger.setLevel(logging.INFO)
-        elif log_level == "error":
-            logger.setLevel(logging.ERROR)
+    logger = setup_logger(log_level, only_print_filenames)
 
     # check required directory param only if not list albums
     if not list_albums and not directory:
@@ -313,24 +301,6 @@ def main(
         print(ex)
         sys.exit(1)
 
-    def photos_exception_handler(ex, retries):
-        """Handles session errors in the PhotoAlbum photos iterator"""
-        if "Invalid global session" in str(ex):
-            if retries > constants.MAX_RETRIES:
-                logger.tqdm_write("iCloud re-authentication failed! Please try again later.")
-                raise ex
-            logger.tqdm_write(
-                "Session error, re-authenticating...",
-                logging.ERROR)
-            if retries > 1:
-                # If the first reauthentication attempt failed,
-                # start waiting a few seconds before retrying in case
-                # there are some issues with the Apple servers
-                time.sleep(constants.WAIT_SECONDS * retries)
-            icloud = PyiCloudService(username, password)
-
-    photos.exception_handler = photos_exception_handler
-
     albums = icloud.photos.albums.values()
     logger.info(f"there are {len(photos)} assets in {len(albums)} albums in your library")
 
@@ -342,8 +312,7 @@ def main(
         sys.exit(0)
 
     directory = os.path.normpath(directory)
-    #global newest_created_date
-    newest_created_date = 0
+    newest_created_date = datetime.datetime.fromtimestamp(0).astimezone(get_localzone())
 
     if date_since is not None:
         date_since = date_since.astimezone(get_localzone())
@@ -398,35 +367,17 @@ def main(
                 logger.set_tqdm_description(f"{album}: skipping {photo.filename}, only downloading photos and videos. (Item type was: {photo.item_type})")
                 return
             
-            #global newest_created_date
-
             try:
                 created_date = photo.created.astimezone(get_localzone())
             except (ValueError, OSError):
                 logger.set_tqdm_description(f"{album}: Could not convert photo {photo.filename} created date to local timezone ({photo.created})", logging.ERROR)
                 created_date = photo.created
-            if newest_created_date == 0:
-                newest_created_date = created_date
-            elif created_date > newest_created_date:
+
+            if created_date > newest_created_date:
                 newest_created_date = created_date
 
-            try:
-                if folder_structure.lower() == "none":
-                    folder_path = ""
-                elif folder_structure.lower() == "album":
-                    folder_path = album
-                else:
-                    folder_path = folder_structure.format(created_date)
-            except ValueError:  # pragma: no cover
-                # This error only seems to happen in Python 2
-                logger.set_tqdm_description(f"{album}: photo {photo.filename} created date was not valid ({photo.created})", logging.ERROR)
-                # e.g. ValueError: year=5 is before 1900
-                # (https://github.com/icloud-photos-downloader/icloud_photos_downloader/issues/122)
-                # Just use the Unix epoch
-                created_date = datetime.datetime.fromtimestamp(0)
-                folder_path = folder_structure.format(created_date)
+            download_dir = build_download_dir(directory, folder_structure, album, created_date, datetime.datetime.fromtimestamp(0))
 
-            download_dir = os.path.normpath(os.path.join(directory, folder_path))
             download_size = size
 
             try:
@@ -514,7 +465,6 @@ def main(
                     filename = version["filename"]
                     if live_photo_size != "original":
                         # Add size to filename if not original
-                        filename_orig = filename.replace(".MOV", "-%s.MOV" % live_photo_size)
                         filename = filename.replace(".MOV", f"-{live_photo_size}.MOV")
                     lp_download_path = os.path.join(download_dir, filename)
 
@@ -560,13 +510,11 @@ def main(
         if only_print_filenames:
             sys.exit(0)
 
-        logger.info(f"{album}: all assets have been downloaded")
+        logger.info(f"{album}: all assets have been processed")
 
         if auto_delete:
             autodelete_photos(icloud, folder_structure, directory)
             
-    #reserved_albums = ["All Photos", "Time-lapse", "Videos", "Slo-mo", "Bursts", "Favorites", "Panoramas", "Screenshots", "Live", "Recently Deleted", "Hidden"]
-
     if all_albums == True:
         if exclude_smart_folders:
             album_titles = [album for album in album_titles if album not in icloud.photos.SMART_FOLDERS.keys()]
