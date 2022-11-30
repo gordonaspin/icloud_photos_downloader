@@ -22,6 +22,7 @@ from pyicloud.exceptions import PyiCloud2SARequiredException
 from pyicloud.exceptions import PyiCloudFailedLoginException
 from pyicloud import PyiCloudService
 from icloudpd import download
+from icloudpd.authentication import authenticate
 from icloudpd.email_notifications import send_2sa_notification
 from icloudpd.string_helpers import truncate_middle
 from icloudpd.autodelete import autodelete_photos
@@ -36,183 +37,37 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 @click.command(context_settings=CONTEXT_SETTINGS, options_metavar="<options>")
 # @click.argument(
-@click.option(
-    "-d", "--directory",
-    help="Local directory that should be used for download",
-    type=click.Path(exists=True),
-    metavar="<directory>")
-@click.option(
-    "-u", "--username",
-    help="Your iCloud username or email address",
-    metavar="<username>",
-    prompt="iCloud username/email",
-)
-@click.option(
-    "-p", "--password",
-    help="Your iCloud password "
-    "(default: use PyiCloud keyring or prompt for password)",
-    metavar="<password>",
-)
-@click.option(
-    "--cookie-directory",
-    help="Directory to store cookies for authentication "
-    "(default: ~/.pyicloud)",
-    metavar="</cookie/directory>",
-    default="~/.pyicloud",
-)
-@click.option(
-    "--size",
-    help="Image size to download (default: original)",
-    type=click.Choice(["original", "medium", "thumb"]),
-    default="original",
-)
-@click.option(
-    "--live-photo-size",
-    help="Live Photo video size to download (default: original)",
-    type=click.Choice(["original", "medium", "thumb"]),
-    default="original",
-)
-@click.option(
-    "--recent",
-    help="Number of recent photos to download (default: download all photos)",
-    type=click.IntRange(0),
-)
-@click.option('--date-since',
-    help="Download only assets newer than date-since",
-    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%d-%H:%M:%S"]),
-)
-@click.option(
-    "--until-found",
-    help="Download most recently added photos until we find x number of "
-    "previously downloaded consecutive photos (default: download all photos)",
-    type=click.IntRange(0),
-)
-@click.option(
-    "-a", "--album",
-    help="Album to download (default: All Photos)",
-    metavar="<album>",
-    default="All Photos",
-)
-@click.option(
-    "--all-albums",
-    help="Download all albums",
-    is_flag=True,
-)
-@click.option(
-    "--exclude-smart-folders",
-    help="Exclude smart folders from listing or download:"
-    "All Photos, Time-lapse, Videos, Slo-mo, Bursts, Favorites, Panoramas, Screenshots, Live, Recently Deleted, Hidden",
-    is_flag=True,
-)
-@click.option(
-    "-l", "--list-albums",
-    help="Lists the avaliable albums and exits",
-    is_flag=True,
-)
-@click.option(
-    "--skip-videos",
-    help="Don't download any videos (default: Download all photos and videos)",
-    is_flag=True,
-)
-@click.option(
-    "--skip-live-photos",
-    help="Don't download any live photos (default: Download live photos)",
-    is_flag=True,
-)
-@click.option(
-    "--force-size",
-    help="Only download the requested size "
-    + "(default: download original if size is not available)",
-    is_flag=True,
-)
-@click.option(
-    "--auto-delete",
-    help='Scans the "Recently Deleted" folder and deletes any files found in there. '
-    + "(If you restore the photo in iCloud, it will be downloaded again.)",
-    is_flag=True,
-)
-@click.option(
-    "--only-print-filenames",
-    help="Only prints the filenames of all files that will be downloaded "
-    "(not including files that are already downloaded.)"
-    + "(Does not download or delete any files.)",
-    is_flag=True,
-)
-@click.option(
-    "--folder-structure",
-    help="Folder structure (default: {:%Y/%m/%d}). "
-    "If set to 'none' all photos will just be placed into the download directory, "
-    "if set to 'album' photos will be placed in a folder named as the album into the download directory",
-    metavar="<folder_structure>",
-    default="{:%Y/%m/%d}",
-)
-@click.option(
-    "--set-exif-datetime",
-    help="Write the DateTimeOriginal exif tag from file creation date, " +
-    "if it doesn't exist.",
-    is_flag=True,
-)
-@click.option(
-    "--smtp-username",
-    help="Your SMTP username, for sending email notifications when "
-    "two-step authentication expires.",
-    metavar="<smtp_username>",
-)
-@click.option(
-    "--smtp-password",
-    help="Your SMTP password, for sending email notifications when "
-    "two-step authentication expires.",
-    metavar="<smtp_password>",
-)
-@click.option(
-    "--smtp-host",
-    help="Your SMTP server host. Defaults to: smtp.gmail.com",
-    metavar="<smtp_host>",
-    default="smtp.gmail.com",
-)
-@click.option(
-    "--smtp-port",
-    help="Your SMTP server port. Default: 587 (Gmail)",
-    metavar="<smtp_port>",
-    type=click.IntRange(0),
-    default=587,
-)
-@click.option(
-    "--smtp-no-tls",
-    help="Pass this flag to disable TLS for SMTP (TLS is required for Gmail)",
-    metavar="<smtp_no_tls>",
-    is_flag=True,
-)
-@click.option(
-    "--notification-email",
-    help="Email address where you would like to receive email notifications. "
-    "Default: SMTP username",
-    metavar="<notification_email>",
-)
-@click.option(
-    "--notification-script",
-    type=click.Path(),
-    help="Runs an external script when two factor authentication expires. "
-    "(path required: /path/to/my/script.sh)",
-)
-@click.option(
-    "--log-level",
-    help="Log level (default: debug)",
-    type=click.Choice(["debug", "info", "error"]),
-    default="debug",
-)
-@click.option("--no-progress-bar",
-              help="Disables the one-line progress bar and prints log messages on separate lines "
-              "(Progress bar is disabled by default if there is no tty attached)",
-              is_flag=True,
-              )
-@click.option(
-    "--threads-num",
-    help="Number of cpu threads -- deprecated. To be removed in future version",
-    type=click.IntRange(1),
-    default=1,
-)
-@click.version_option()
+@click.option("-d", "--directory",  help="Local directory that should be used for download", type=click.Path(exists=True), metavar="<directory>")
+@click.option("-u", "--username",   help="Your iCloud username or email address", metavar="<username>", prompt="iCloud username/email")
+@click.option("-p", "--password",   help="Your iCloud password (default: use PyiCloud keyring or prompt for password)", metavar="<password>")
+@click.option("--cookie-directory", help="Directory to store cookies for authentication (default: ~/.pyicloud)", metavar="</cookie/directory>", default="~/.pyicloud")
+@click.option("--size",             help="Image size to download (default: original)", type=click.Choice(["original", "medium", "thumb"]), default="original")
+@click.option("--live-photo-size",  help="Live Photo video size to download (default: original)", type=click.Choice(["original", "medium", "thumb"]), default="original")
+@click.option("--recent",           help="Number of recent photos to download (default: download all photos)", type=click.IntRange(0))
+@click.option('--date-since',       help="Download only assets newer than date-since", type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%d-%H:%M:%S"]))
+@click.option("--until-found",      help="Download most recently added photos until we find x number of previously downloaded consecutive photos (default: download all photos)", type=click.IntRange(0))
+@click.option("-a", "--album",      help="Album to download (default: All Photos)", metavar="<album>", default="All Photos")
+@click.option("--all-albums",       help="Download all albums", is_flag=True)
+@click.option("--exclude-smart-folders", help="Exclude smart folders from listing or download: All Photos, Time-lapse, Videos, Slo-mo, Bursts, Favorites, Panoramas, Screenshots, Live, Recently Deleted, Hidden", is_flag=True)
+@click.option("-l", "--list-albums",help="Lists the avaliable albums and exits", is_flag=True)
+@click.option("--skip-videos",      help="Don't download any videos (default: Download all photos and videos)", is_flag=True)
+@click.option("--skip-live-photos", help="Don't download any live photos (default: Download live photos)", is_flag=True,)
+@click.option("--force-size",       help="Only download the requested size (default: download original if size is not available)", is_flag=True,)
+@click.option("--auto-delete",      help='Scans the "Recently Deleted" folder and deletes any files found in there. (If you restore the photo in iCloud, it will be downloaded again.)', is_flag=True)
+@click.option("--only-print-filenames",help="Only prints the filenames of all files that will be downloaded (not including files that are already downloaded). (Does not download or delete any files.)", is_flag=True)
+@click.option("--folder-structure", help="Folder structure (default: {:%Y/%m/%d}). If set to 'none' all photos will just be placed into the download directory, if set to 'album' photos will be placed in a folder named as the album into the download directory", metavar="<folder_structure>", default="{:%Y/%m/%d}",)
+@click.option("--set-exif-datetime",help="Write the DateTimeOriginal exif tag from file creation date, if it doesn't exist.", is_flag=True)
+@click.option("--smtp-username",    help="Your SMTP username, for sending email notifications when two-step authentication expires.", metavar="<smtp_username>")
+@click.option("--smtp-password",    help="Your SMTP password, for sending email notifications when two-step authentication expires.", metavar="<smtp_password>")
+@click.option("--smtp-host",        help="Your SMTP server host. Defaults to: smtp.gmail.com", metavar="<smtp_host>", default="smtp.gmail.com")
+@click.option("--smtp-port",        help="Your SMTP server port. Default: 587 (Gmail)", metavar="<smtp_port>", type=click.IntRange(0), default=587)
+@click.option("--smtp-no-tls",      help="Pass this flag to disable TLS for SMTP (TLS is required for Gmail)", metavar="<smtp_no_tls>", is_flag=True)
+@click.option("--notification-email", help="Email address where you would like to receive email notifications. Default: SMTP username", metavar="<notification_email>")
+@click.option("--notification-script", type=click.Path(), help="Runs an external script when two factor authentication expires. (path required: /path/to/my/script.sh)")
+@click.option("--log-level",        help="Log level (default: debug)", type=click.Choice(["debug", "info", "error"]), default="debug")
+@click.option("--no-progress-bar",  help="Disables the one-line progress bar and prints log messages on separate lines (Progress bar is disabled by default if there is no tty attached)", is_flag=True)
+@click.option("--threads-num",      help="Number of cpu threads -- deprecated. To be removed in future version", type=click.IntRange(1), default=1)
+#@click.version_option()
 # pylint: disable-msg=too-many-arguments,too-many-statements
 # pylint: disable-msg=too-many-branches,too-many-locals
 
@@ -264,13 +119,13 @@ def main(
     raise_error_on_2sa = False
     try:
         logger.info("connecting to iCloudService...")
-        icloud = PyiCloudService(
+        #icloud = PyiCloudService(
+        icloud = authenticate(
             username,
-            password)#,
-            #cookie_directory)#,
-            #raise_error_on_2sa)#,
-            #client_id=os.environ.get("CLIENT_ID"),
-        #)
+            password,
+            cookie_directory,
+            raise_error_on_2sa,
+            client_id=os.environ.get("CLIENT_ID"))
     except PyiCloud2SARequiredException as ex:
         if notification_script is not None:
             subprocess.call([notification_script])

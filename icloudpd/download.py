@@ -7,8 +7,6 @@ import logging
 from tzlocal import get_localzone
 from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
 from pyicloud.exceptions import PyiCloudAPIResponseException
-from icloudpd.logger import setup_logger
-
 # Import the constants object so that we can mock WAIT_SECONDS in tests
 from icloudpd import constants
 

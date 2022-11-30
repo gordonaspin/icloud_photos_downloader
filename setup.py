@@ -5,13 +5,13 @@ with open("requirements.txt") as f:
 
 setup(
     name="icloudpd",
-    version="1.7.2",
-    url="https://github.com/icloud-photos-downloader/icloud_photos_downloader",
+    version="2.0.0",
+    url="https://github.com/gordonaspin/icloud_photos_downloader",
     description=(
         "icloudpd is a command-line tool to download photos and videos from iCloud."
     ),
-    maintainer="Nathan Broadbent",
-    maintainer_email="icloudpd@ndbroadbent.com",
+    maintainer="Gordon Aspin",
+    maintainer_email="gordon.aspin@gmail.com",
     license="MIT",
     packages=find_packages(),
     install_requires=required,

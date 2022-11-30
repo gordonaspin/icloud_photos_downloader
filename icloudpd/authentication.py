@@ -2,6 +2,8 @@
 
 import sys
 import click
+import logging
+
 import pyicloud
 from icloudpd.logger import setup_logger
 
@@ -21,7 +23,7 @@ def authenticate(
         client_id=None
 ):
     """Authenticate with iCloud username and password"""
-    logger = setup_logger()
+    logger = logging.getLogger("icloudpd")
     logger.debug("Authenticating...")
     try:
         # If password not provided on command line variable will be set to None
