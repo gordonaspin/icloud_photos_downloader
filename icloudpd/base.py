@@ -48,7 +48,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option("--until-found",      help="Download most recently added photos until we find x number of previously downloaded consecutive photos (default: download all photos)", type=click.IntRange(0))
 @click.option("-a", "--album",      help="Album to download (default: All Photos)", metavar="<album>", default="All Photos")
 @click.option("--all-albums",       help="Download all albums", is_flag=True)
-@click.option("--exclude-smart-folders", help="Exclude smart folders from listing or download: All Photos, Time-lapse, Videos, Slo-mo, Bursts, Favorites, Panoramas, Screenshots, Live, Recently Deleted, Hidden", is_flag=True)
+@click.option("--skip-smart-folders", help="Exclude smart folders from listing or download: All Photos, Time-lapse, Videos, Slo-mo, Bursts, Favorites, Panoramas, Screenshots, Live, Recently Deleted, Hidden", is_flag=True)
 @click.option("-l", "--list-albums",help="Lists the avaliable albums and exits", is_flag=True)
 @click.option("--skip-videos",      help="Don't download any videos (default: Download all photos and videos)", is_flag=True)
 @click.option("--skip-live-photos", help="Don't download any live photos (default: Download live photos)", is_flag=True,)
@@ -83,7 +83,7 @@ def main(
         until_found,
         album,
         all_albums,
-        exclude_smart_folders,
+        skip_smart_folders,
         list_albums,
         skip_videos,
         skip_live_photos,
@@ -161,7 +161,7 @@ def main(
 
     album_titles = [str(a) for a in albums]
     if list_albums:
-        if exclude_smart_folders:
+        if skip_smart_folders:
             album_titles = [album for album in album_titles if album not in icloud.photos.SMART_FOLDERS.keys()]
         print(*album_titles, sep="\n")
         sys.exit(0)
@@ -288,7 +288,6 @@ def main(
                 version = photo.versions[download_size]
                 photo_size = version["size"]
                 if file_size != photo_size:
-                    download_path_orig = ("-%s." % photo_size).join(download_path.rsplit(".", 1))
                     download_path = f"-{photo_size}.".join(download_path.rsplit(".", 1))
                     logger.set_tqdm_description(f"{album}: deduplicated (size) {truncate_middle(download_path, 96)} file size {file_size} photo size {photo_size} dated {created_date}")
                     file_exists = os.path.isfile(download_path)
@@ -371,7 +370,7 @@ def main(
             autodelete_photos(icloud, folder_structure, directory)
             
     if all_albums == True:
-        if exclude_smart_folders:
+        if skip_smart_folders:
             album_titles = [album for album in album_titles if album not in icloud.photos.SMART_FOLDERS.keys()]
         
         for album in album_titles:
