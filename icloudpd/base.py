@@ -4,6 +4,7 @@ from __future__ import print_function
 import os
 import sys
 import datetime
+import time
 import logging
 import itertools
 import subprocess
@@ -173,6 +174,25 @@ def main(
     if date_since is not None:
         date_since = date_since.astimezone(get_localzone())
         logger.debug(f"assets older than {date_since} will be skipped")
+
+    def photos_exception_handler(ex, retries):
+        """Handles session errors in the PhotoAlbum photos iterator"""
+        nonlocal icloud
+        if "Invalid global session" in str(ex):
+            if retries > constants.MAX_RETRIES:
+                logger.tqdm_write("iCloud re-authentication failed! Please try again later.")
+                raise ex
+            logger.tqdm_write(
+                "Session error, re-authenticating...",
+                logging.ERROR)
+            if retries > 1:
+                # If the first reauthentication attempt failed,
+                # start waiting a few seconds before retrying in case
+                # there are some issues with the Apple servers
+                time.sleep(constants.WAIT_SECONDS * retries)
+            icloud = authenticate(username, password)
+
+    photos.exception_handler = photos_exception_handler
 
     def download_album(album):
         photos = icloud.photos.albums[album]
