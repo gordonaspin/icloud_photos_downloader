@@ -32,7 +32,7 @@ def authenticate(
             username, password,
             cookie_directory=cookie_directory,
             client_id=client_id)
-    except pyicloud.exceptions.NoStoredPasswordAvailable:
+    except pyicloud.exceptions.PyiCloudNoStoredPasswordAvailableException:
         # Prompt for password if not stored in PyiCloud's keyring
         password = click.prompt("iCloud Password", hide_input=True)
         icloud = pyicloud.PyiCloudService(

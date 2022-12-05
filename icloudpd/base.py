@@ -3,7 +3,6 @@
 from __future__ import print_function
 import os
 import sys
-import time
 import datetime
 import logging
 import itertools
@@ -20,7 +19,6 @@ from pyicloud.exceptions import PyiCloudAPIResponseException
 from icloudpd.logger import setup_logger
 from pyicloud.exceptions import PyiCloud2SARequiredException
 from pyicloud.exceptions import PyiCloudFailedLoginException
-from pyicloud import PyiCloudService
 from icloudpd import download
 from icloudpd.authentication import authenticate
 from icloudpd.email_notifications import send_2sa_notification
@@ -31,7 +29,6 @@ from icloudpd.paths import build_download_dir
 from icloudpd import exif_datetime
 # Must import the constants object so that we can mock values in tests.
 from icloudpd import constants
-from icloudpd.counter import Counter
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -50,6 +47,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option("--all-albums",       help="Download all albums", is_flag=True)
 @click.option("--skip-smart-folders", help="Exclude smart folders from listing or download: All Photos, Time-lapse, Videos, Slo-mo, Bursts, Favorites, Panoramas, Screenshots, Live, Recently Deleted, Hidden", is_flag=True)
 @click.option("-l", "--list-albums",help="Lists the avaliable albums and exits", is_flag=True)
+@click.option("-s", "--sort",       help="Sort album names (default: desc)", type=click.Choice(["asc", "desc"]), default="desc")
 @click.option("--skip-videos",      help="Don't download any videos (default: Download all photos and videos)", is_flag=True)
 @click.option("--skip-live-photos", help="Don't download any live photos (default: Download live photos)", is_flag=True,)
 @click.option("--force-size",       help="Only download the requested size (default: download original if size is not available)", is_flag=True,)
@@ -85,6 +83,7 @@ def main(
         all_albums,
         skip_smart_folders,
         list_albums,
+        sort,
         skip_videos,
         skip_live_photos,
         force_size,
@@ -118,7 +117,7 @@ def main(
     )
     raise_error_on_2sa = False
     try:
-        logger.info("connecting to iCloudService...")
+        logger.debug("connecting to iCloudService...")
         #icloud = PyiCloudService(
         icloud = authenticate(
             username,
@@ -148,7 +147,7 @@ def main(
     # After 6 or 7 runs within 1h Apple blocks the API for some time. In that
     # case exit.
     try:
-        logger.info(f"fetching library information from iCloudService...")
+        logger.debug(f"fetching library information from iCloudService...")
         photos = icloud.photos.all
     except PyiCloudAPIResponseException as ex:
         # For later: come up with a nicer message to the user. For now take the
@@ -160,6 +159,7 @@ def main(
     logger.info(f"there are {len(photos)} assets in {len(albums)} albums in your library")
 
     album_titles = [str(a) for a in albums]
+    album_titles.sort(reverse=(sort == 'desc'))
     if list_albums:
         if skip_smart_folders:
             album_titles = [album for album in album_titles if album not in icloud.photos.SMART_FOLDERS.keys()]
@@ -168,6 +168,7 @@ def main(
 
     directory = os.path.normpath(directory)
     newest_created_date = datetime.datetime.fromtimestamp(0).astimezone(get_localzone())
+    newest_asset_name = "unknown"
 
     if date_since is not None:
         date_since = date_since.astimezone(get_localzone())
@@ -176,7 +177,6 @@ def main(
     def download_album(album):
         photos = icloud.photos.albums[album]
         photos_count = len(photos)
-        logger.info(f"{album}: has {photos_count} assets ...")
 
         # Optional: Only download the x most recent photos.
         if recent is not None:
@@ -211,9 +211,20 @@ def main(
             photos_enumerator = tqdm(photos, **tqdm_kwargs)
             logger.set_tqdm(photos_enumerator)
 
-        def download_photo(counter, reached_date_since, photo):
+        def download_photo(photo):
             """internal function for actually downloading the photos"""
+
             nonlocal newest_created_date
+            nonlocal newest_asset_name
+            nonlocal reached_date_since
+            nonlocal consecutive_files_found
+
+            def update_newest(created, newest, path):
+                nonlocal newest_asset_name
+                nonlocal newest_created_date
+                if created > newest:
+                    newest_created_date = created
+                    newest_asset_name = path
 
             if skip_videos and photo.item_type != "image":
                 logger.set_tqdm_description(f"{album}: skipping {photo.filename}, only downloading photos.")
@@ -228,11 +239,7 @@ def main(
                 logger.set_tqdm_description(f"{album}: Could not convert photo {photo.filename} created date to local timezone ({photo.created})", logging.ERROR)
                 created_date = photo.created
 
-            if created_date > newest_created_date:
-                newest_created_date = created_date
-
             download_dir = build_download_dir(directory, folder_structure, album, created_date, datetime.datetime.fromtimestamp(0))
-
             download_size = size
 
             try:
@@ -268,7 +275,7 @@ def main(
             if date_since is not None:
                 if created_date < date_since:
                     logger.debug(f"{album}: reached date since {date_since} on {photo.filename.encode('utf-8').decode('ascii', 'ignore')} dated {created_date}")
-                    reached_date_since.increment()
+                    reached_date_since = True
                     return
 
             download_path = local_download_path(photo, download_size, download_dir)
@@ -292,11 +299,13 @@ def main(
                     logger.set_tqdm_description(f"{album}: deduplicated (size) {truncate_middle(download_path, 96)} file size {file_size} photo size {photo_size} dated {created_date}")
                     file_exists = os.path.isfile(download_path)
                 if file_exists:
-                    counter.increment()
+                    consecutive_files_found = consecutive_files_found + 1
                     logger.set_tqdm_description(f"{album}: skipping (already exists) {truncate_middle(download_path, 96)} dated {created_date}")
 
+            update_newest(created_date, newest_created_date, download_path)
+
             if not file_exists:
-                counter.reset()
+                consecutive_files_found = 0
                 if only_print_filenames:
                     print(download_path)
                 else:
@@ -321,9 +330,7 @@ def main(
                         # Add size to filename if not original
                         filename = filename.replace(".MOV", f"-{live_photo_size}.MOV")
                     lp_download_path = os.path.join(download_dir, filename)
-
                     lp_file_exists = os.path.isfile(lp_download_path)
-
                     if only_print_filenames and not lp_file_exists:
                         print(lp_download_path)
                     else:
@@ -339,32 +346,32 @@ def main(
                         if not lp_file_exists:
                             logger.set_tqdm_description(f"{album}: downloading {truncate_middle(lp_download_path, 96)} dated {created_date}")
                             download.download_media(icloud, photo, lp_download_path, lp_size)
+                    
+                    update_newest(created_date, newest_created_date, lp_download_path)
 
-        consecutive_files_found = Counter(0)
-        reached_date_since = Counter(0)
 
-        def should_break(counter, reached_date_counter):
-            #Exit if until_found condition is reached
-            return (until_found is not None and counter.value() >= until_found) or reached_date_counter.value() > 0
+        consecutive_files_found = 0
+        reached_date_since = False
 
         photos_iterator = iter(photos_enumerator)
         while True:
             try:
-                if should_break(consecutive_files_found, reached_date_since):
-                    if reached_date_since.value() > 0:
+                if (until_found is not None and consecutive_files_found >= until_found) or reached_date_since:
+                    if reached_date_since:
                         logger.tqdm_write(f"{album}: processed all assets more recent than {date_since}")
                     else:
-                        logger.tqdm_write(f"{album}: Found {until_found} consecutive previously downloaded photos. Exiting")
+                        logger.tqdm_write(f"{album}: found {until_found} consecutive previously downloaded photos")
                     break
-                item = next(photos_iterator)
-                download_photo(consecutive_files_found, reached_date_since, item)
+                photo = next(photos_iterator)
+                download_photo(photo)
             except StopIteration:
                 break
 
         if only_print_filenames:
             sys.exit(0)
 
-        logger.info(f"{album}: all assets have been processed")
+        if not reached_date_since:
+            logger.info(f"{album}: processed all assets")
 
         if auto_delete:
             autodelete_photos(icloud, folder_structure, directory)
@@ -378,4 +385,4 @@ def main(
     else:
         download_album(album)
 
-    logger.info(f"Most recent object in library is dated {newest_created_date.astimezone().replace(tzinfo=None).strftime('%Y-%m-%d-%H:%M:%S')}")
+    logger.info(f"Most recent asset in library is {newest_asset_name} dated {newest_created_date.astimezone().replace(tzinfo=None).strftime('%Y-%m-%d-%H:%M:%S')}")
