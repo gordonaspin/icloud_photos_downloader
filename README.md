@@ -231,14 +231,14 @@ Now the script will run every 6 hours to download any new photos and videos.
 
 ## Docker
 
-This script is available in a Docker image: `docker pull icloudpd/icloudpd`
+This script is available in a Docker image: `docker pull gordonaspin/icloudpd`
 
 Usage:
 
 ```bash
 # Downloads all photos to ./Photos
 
-docker pull icloudpd/icloudpd
+docker pull gordonaspin/icloudpd
 docker run -it --rm --name icloud \
     -v $(pwd)/Photos:/data \
     -v $(pwd)/cookies:/cookies \
@@ -259,7 +259,32 @@ On Windows:
 - use `%cd%` instead of `$(pwd)`
 - or full path, e.g. `-v c:/photos/icloud:/data`
 
-Building image locally:
+Building docker image from this repo and gordonaspin/pyicloud repo image locally:
+
+```bash
+docker build --tag your-repo/icloudpd:latest --progress=plain -f ./Dockerfile.from_repo .
+
+# run container forever in the background so we can keep a temporal keyring and cookies
+# the keyring and cookies will exist until the container exits
+docker run -it --detach --name icloud your-repo/icloudpd sleep infinity
+
+# the pyicloud icloudd command line utility
+# this will optionally create a python keyring in the container for future use, cookies will go to a tmp folder in the container
+docker exec -it icloud icloud --username apple_id@mail.com --llist
+
+# run icloudpd -h
+docker exec -it icloud icloudpd -h
+
+# start the container with mounts for the Photos folder and cookie storage:
+docker run -it --detach --name icloud -v ~/Pictures/Photos:/data -v ~/.pyicloud:/cookies your-repo/icloudpd sleep infinity
+
+# run icloudpd inside the container and download photos that meet your criteria, for example:
+docker exec -it icloud icloudpd -d /data --cookie-directory /cookies --all-albums --folder-structure album -u apple_id@email.com --no-progress-bar --date-since 2022-12-01
+
+```
+
+
+Building original (from pre-fork) image locally:
 
 ```bash
 docker build . -t icloudpd
