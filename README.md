@@ -50,11 +50,12 @@ Options:
                                   photos)  [x>=0]
   -a, --album <album>             Album to download (default: All Photos)
   --all-albums                    Download all albums
-  --exclude-smart-folders         Exclude smart folders from listing or
-                                  download:All Photos, Time-lapse, Videos,
+  --skip-smart-folders            Exclude smart folders from listing or
+                                  download: All Photos, Time-lapse, Videos,
                                   Slo-mo, Bursts, Favorites, Panoramas,
                                   Screenshots, Live, Recently Deleted, Hidden
   -l, --list-albums               Lists the avaliable albums and exits
+  -s, --sort [asc|desc]           Sort album names (default: desc)
   --skip-videos                   Don't download any videos (default: Download
                                   all photos and videos)
   --skip-live-photos              Don't download any live photos (default:
@@ -67,7 +68,7 @@ Options:
                                   downloaded again.)
   --only-print-filenames          Only prints the filenames of all files that
                                   will be downloaded (not including files that
-                                  are already downloaded.)(Does not download
+                                  are already downloaded). (Does not download
                                   or delete any files.)
   --folder-structure <folder_structure>
                                   Folder structure (default: {:%Y/%m/%d}). If
@@ -99,16 +100,14 @@ Options:
   --notification-script PATH      Runs an external script when two factor
                                   authentication expires. (path required:
                                   /path/to/my/script.sh)
-  --log-level [debug|info|error]  Log level (default: debug)
+  --log-level [debug|info|error]  Log level (default: info)
   --no-progress-bar               Disables the one-line progress bar and
                                   prints log messages on separate lines
                                   (Progress bar is disabled by default if
                                   there is no tty attached)
   --threads-num INTEGER RANGE     Number of cpu threads -- deprecated. To be
                                   removed in future version  [x>=1]
-  --version                       Show the version and exit.
   -h, --help                      Show this message and exit.
-
 ```
 
 Example:
