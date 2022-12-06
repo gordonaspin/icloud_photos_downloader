@@ -1,0 +1,31 @@
+# This image is mainly used for development and testing
+
+FROM python:3.10 as base
+
+WORKDIR /app
+
+FROM base as common
+RUN apt-get update && apt-get install -y dos2unix bash
+RUN python -m pip install --upgrade pip
+RUN mkdir Photos
+RUN git clone https://github.com/gordonaspin/icloud_photos_downloader.git
+RUN git clone https://github.com/gordonaspin/pyicloud.git
+
+RUN pip3 install -r icloud_photos_downloader/requirements.txt
+RUN pip3 install -r pyicloud/requirements.txt
+
+FROM common as build
+WORKDIR /app/icloud_photos_downloader
+RUN scripts/build
+WORKDIR /app/pyicloud
+RUN scripts/build
+
+FROM python:3.10-alpine as runtime
+ARG TZ="America/New_York"
+RUN apk add --no-cache tzdata
+RUN cp /usr/share/zoneinfo/$TZ /etc/localtime
+RUN pip install --upgrade pip
+COPY --from=build /app/icloud_photos_downloader/dist/* /tmp
+COPY --from=build /app/pyicloud/dist/* /tmp
+RUN pip3 install /tmp/*.whl
+RUN pip3 list
