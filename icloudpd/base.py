@@ -63,7 +63,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option("--smtp-no-tls",      help="Pass this flag to disable TLS for SMTP (TLS is required for Gmail)", metavar="<smtp_no_tls>", is_flag=True)
 @click.option("--notification-email", help="Email address where you would like to receive email notifications. Default: SMTP username", metavar="<notification_email>")
 @click.option("--notification-script", type=click.Path(), help="Runs an external script when two factor authentication expires. (path required: /path/to/my/script.sh)")
-@click.option("--log-level",        help="Log level (default: debug)", type=click.Choice(["debug", "info", "error"]), default="debug")
+@click.option("--log-level",        help="Log level (default: debug)", type=click.Choice(["debug", "info", "error"]), default="info")
 @click.option("--no-progress-bar",  help="Disables the one-line progress bar and prints log messages on separate lines (Progress bar is disabled by default if there is no tty attached)", is_flag=True)
 @click.option("--threads-num",      help="Number of cpu threads -- deprecated. To be removed in future version", type=click.IntRange(1), default=1)
 #@click.version_option()
@@ -118,7 +118,7 @@ def main(
     )
     raise_error_on_2sa = False
     try:
-        logger.debug("connecting to iCloudService...")
+        logger.info("connecting to iCloudService...")
         #icloud = PyiCloudService(
         icloud = authenticate(
             username,

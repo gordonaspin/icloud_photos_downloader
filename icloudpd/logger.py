@@ -36,6 +36,8 @@ def setup_logger(log_level, disabled):
     """Set up logger and add stdout handler"""
     logging.setLoggerClass(IPDLogger)
     logger = logging.getLogger("icloudpd")
+    pyicloud_logger = logging.getLogger('pyicloud')
+
     has_stdout_handler = False
     for handler in logger.handlers:
         if handler.name == "stdoutLogger":
@@ -48,18 +50,23 @@ def setup_logger(log_level, disabled):
         stdout_handler.setFormatter(formatter)
         stdout_handler.name = "stdoutLogger"
         logger.addHandler(stdout_handler)
+        pyicloud_logger.addHandler(stdout_handler)
 
     if disabled:
         logger.disabled = True
+        pyicloud_logger.disabled = True
     else:
         # Need to make sure disabled is reset to the correct value,
         # because the logger instance is shared between tests.
         logger.disabled = False
         if log_level == "debug":
             logger.setLevel(logging.DEBUG)
+            pyicloud_logger.setLevel(logging.DEBUG)
         elif log_level == "info":
             logger.setLevel(logging.INFO)
+            pyicloud_logger.setLevel(logging.INFO)
         elif log_level == "error":
             logger.setLevel(logging.ERROR)
+            pyicloud_logger.setLevel(logging.ERROR)
 
     return logger
