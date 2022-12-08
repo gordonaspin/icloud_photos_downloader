@@ -5,6 +5,8 @@ import shutil
 import pytest
 from click.testing import CliRunner
 from icloudpd.base import main
+import icloudpd.constants as constants
+
 import inspect
 
 vcr = VCR(decode_compressed_response=True, record_mode="new_episodes")
@@ -92,4 +94,4 @@ class AutodeletePhotosTestCase(TestCase):
             self.assertNotIn("IMG_7407.JPG", self._caplog.text)
             self.assertNotIn("IMG_7407-original.JPG", self._caplog.text)
 
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value

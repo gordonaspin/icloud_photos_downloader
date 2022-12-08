@@ -4,8 +4,11 @@ from vcr import VCR
 import pytest
 from click.testing import CliRunner
 import pyicloud
+from pyicloud.exceptions import PyiCloud2SARequiredException
 from icloudpd.base import main
-from icloudpd.authentication import authenticate, TwoStepAuthRequiredError
+from icloudpd.authentication import authenticate
+from icloudpd.logger import setup_logger
+import icloudpd.constants as constants
 import inspect
 
 vcr = VCR(decode_compressed_response=True)
@@ -30,15 +33,16 @@ class AuthenticationTestCase(TestCase):
         self.assertTrue("Invalid email/password combination." in str(context.exception))
 
     def test_2sa_required(self):
+        setup_logger("debug", False)
         with vcr.use_cassette("tests/vcr_cassettes/auth_requires_2sa.yml"):
-            with self.assertRaises(TwoStepAuthRequiredError) as context:
+            with self.assertRaises(PyiCloud2SARequiredException) as context:
                 # To re-record this HTTP request,
                 # delete ./tests/vcr_cassettes/auth_requires_2sa.yml,
                 # put your actual credentials in here, run the test,
                 # and then replace with dummy credentials.
                 authenticate(
-                    "jdoe@gmail.com",
-                    "password1",
+                    "gordon.aspin@gmail.com",
+                    "0Spring2021.!",
                     raise_error_on_2sa=True,
                     client_id="EC5646DE-9423-11E8-BF21-14109FE0B321",
                 )
@@ -68,21 +72,21 @@ class AuthenticationTestCase(TestCase):
                 main,
                 [
                     "--username",
-                    "jdoe@gmail.com",
+                    "gordon.aspin@gmail.com",
                     "--recent",
                     "0",
                     "--no-progress-bar",
                     "-d",
                     base_dir,
                 ],
-                input="password1\n",
+                input="0Summer2021.!\n",
             )
             self.assertIn("DEBUG    Authenticating...", self._caplog.text)
             self.assertIn(
-                "DEBUG    Looking up all photos and videos from album All Photos...",
+                "DEBUG    fetching library information from iCloudService...",
                 self._caplog.text
             )
             self.assertIn(
-                "INFO     All photos have been downloaded!", self._caplog.text
+                "INFO     Most recent asset in library is", self._caplog.text
             )
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value

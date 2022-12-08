@@ -15,6 +15,7 @@ from pyicloud.base import PyiCloudService
 from pyicloud.exceptions import PyiCloudAPIResponseException
 from requests.exceptions import ConnectionError
 from icloudpd.base import main
+import icloudpd.constants as constants
 from tests.helpers.print_result_exception import print_result_exception
 import inspect
 
@@ -106,7 +107,7 @@ class DownloadPhotoTestCase(TestCase):
                 "2018-07-31 07:22:24",
                 photo_modified_time.strftime('%Y-%m-%d %H:%M:%S'))
 
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_download_photos_and_set_exif(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -182,7 +183,7 @@ class DownloadPhotoTestCase(TestCase):
                     self.assertIn(
                         "INFO     All photos have been downloaded!", self._caplog.text
                     )
-                    assert result.exit_code == 0
+                    assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_download_photos_and_get_exif_exceptions(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -239,7 +240,7 @@ class DownloadPhotoTestCase(TestCase):
                 self.assertIn(
                     "INFO     All photos have been downloaded!", self._caplog.text
                 )
-                assert result.exit_code == 0
+                assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_skip_existing_downloads(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -296,7 +297,7 @@ class DownloadPhotoTestCase(TestCase):
             self.assertIn(
                 "INFO     All photos have been downloaded!", self._caplog.text
             )
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_until_found(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -394,7 +395,7 @@ class DownloadPhotoTestCase(TestCase):
                         self._caplog.text
                     )
 
-                    assert result.exit_code == 0
+                    assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_handle_io_error(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -442,7 +443,7 @@ class DownloadPhotoTestCase(TestCase):
                     "be too large for your OS. Skipping this file...",
                     self._caplog.text,
                 )
-                assert result.exit_code == 0
+                assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_handle_session_error_during_download(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -510,7 +511,7 @@ class DownloadPhotoTestCase(TestCase):
 
                         # Make sure we only call sleep 4 times (skip the first retry)
                         self.assertEqual(sleep_mock.call_count, 4)
-                        assert result.exit_code == 0
+                        assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_handle_session_error_during_photo_iteration(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -578,7 +579,7 @@ class DownloadPhotoTestCase(TestCase):
                         # Make sure we only call sleep 4 times (skip the first retry)
                         self.assertEqual(sleep_mock.call_count, 4)
 
-                        assert result.exit_code == -1
+                        assert result.exit_code == constants.ExitCode.EXIT_FAILED_CLOUD_API.value
 
     def test_handle_connection_error(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -643,7 +644,7 @@ class DownloadPhotoTestCase(TestCase):
                             "INFO     Could not download IMG_7409.JPG! Please try again later.",
                             self._caplog.text,
                         )
-                        assert result.exit_code == 0
+                        assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_handle_albums_error(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -696,7 +697,7 @@ class DownloadPhotoTestCase(TestCase):
                         )
                         print_result_exception(result)
 
-                        assert result.exit_code == 1
+                        assert result.exit_code == constants.ExitCode.EXIT_FAILED_CLOUD_API.value
 
     def test_missing_size(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -761,7 +762,7 @@ class DownloadPhotoTestCase(TestCase):
                 self.assertIn(
                     "INFO     All photos have been downloaded!", self._caplog.text
                 )
-                assert result.exit_code == 0
+                assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_size_fallback_to_original(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -824,7 +825,7 @@ class DownloadPhotoTestCase(TestCase):
                             "original",
                         )
 
-                        assert result.exit_code == 0
+                        assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_force_size(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -881,7 +882,7 @@ class DownloadPhotoTestCase(TestCase):
                     )
                     dp_patched.assert_not_called
 
-                    assert result.exit_code == 0
+                    assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
 
     def test_invalid_creation_date(self):
@@ -941,7 +942,7 @@ class DownloadPhotoTestCase(TestCase):
                 self.assertIn(
                     "INFO     All photos have been downloaded!", self._caplog.text
                 )
-                assert result.exit_code == 0
+                assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     @pytest.mark.skipif(sys.platform == 'win32',
                     reason="does not run on windows")
@@ -1004,7 +1005,7 @@ class DownloadPhotoTestCase(TestCase):
                 self.assertIn(
                     "INFO     All photos have been downloaded!", self._caplog.text
                 )
-                assert result.exit_code == 0
+                assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
 
     def test_unknown_item_type(self):
@@ -1059,7 +1060,7 @@ class DownloadPhotoTestCase(TestCase):
                     )
                     dp_patched.assert_not_called
 
-                    assert result.exit_code == 0
+                    assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_download_and_dedupe_existing_photos(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -1170,7 +1171,7 @@ class DownloadPhotoTestCase(TestCase):
                     "2018-07-31 07:22:24",
                     photo_modified_time.strftime('%Y-%m-%d %H:%M:%S'))
 
-                assert result.exit_code == 0
+                assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
 
     def test_download_photos_and_set_exif_exceptions(self):
@@ -1233,7 +1234,7 @@ class DownloadPhotoTestCase(TestCase):
                     self.assertIn(
                         "INFO     All photos have been downloaded!", self._caplog.text
                     )
-                    assert result.exit_code == 0
+                    assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_download_chinese(self):
         base_dir = os.path.normpath("tests/fixtures/中文")
@@ -1294,4 +1295,4 @@ class DownloadPhotoTestCase(TestCase):
                 "2018-07-31 07:22:24",
                 photo_modified_time.strftime('%Y-%m-%d %H:%M:%S'))
 
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value

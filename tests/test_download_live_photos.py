@@ -12,9 +12,9 @@ import piexif
 from piexif._exceptions import InvalidImageDataError
 from pyicloud.services.photos import PhotoAsset, PhotoAlbum, PhotosService
 from pyicloud.base import PyiCloudService
-#from pyicloud.exceptions import PyiCloudAPIResponseError
 from requests.exceptions import ConnectionError
 from icloudpd.base import main
+import icloudpd.constants as constants
 from tests.helpers.print_result_exception import print_result_exception
 import inspect
 
@@ -69,7 +69,7 @@ class DownloadLivePhotoTestCase(TestCase):
             self.assertIn(
                 "INFO     All photos have been downloaded!", self._caplog.text
             )
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_skip_existing_live_photodownloads(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -135,7 +135,7 @@ class DownloadLivePhotoTestCase(TestCase):
             self.assertIn(
                 "INFO     All photos have been downloaded!", self._caplog.text
             )
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_skip_existing_live_photo_print_filenames(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -196,4 +196,4 @@ class DownloadLivePhotoTestCase(TestCase):
             # Double check that a mocked file does not get listed again. Its already there!
             assert "2020/11/04/IMG_0514_HEVC.MOV" not in filenames
 
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value

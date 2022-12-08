@@ -5,6 +5,7 @@ import shutil
 from click.testing import CliRunner
 from vcr import VCR
 from icloudpd.base import main
+import icloudpd.constants as constants
 from tests.helpers.print_result_exception import print_result_exception
 import inspect
 
@@ -70,7 +71,7 @@ class FolderStructureTestCase(TestCase):
                 os.path.join(base_dir, os.path.normpath("2018/07/30/IMG_7404.MOV")), filenames[7]
             )
 
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
 
     def test_folder_structure_none(self):
@@ -130,4 +131,4 @@ class FolderStructureTestCase(TestCase):
                 os.path.join(base_dir, os.path.normpath("IMG_7404.MOV")), filenames[7]
             )
 
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value

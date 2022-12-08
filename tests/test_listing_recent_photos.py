@@ -6,6 +6,7 @@ import mock
 from vcr import VCR
 from click.testing import CliRunner
 from icloudpd.base import main
+import icloudpd.constants as constants
 from tests.helpers.print_result_exception import print_result_exception
 import inspect
 
@@ -71,7 +72,7 @@ class ListingRecentPhotosTestCase(TestCase):
                 os.path.join(base_dir, os.path.normpath("2018/07/30/IMG_7404.MOV")), filenames[7]
             )
 
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_listing_photos_does_not_create_folders(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -112,7 +113,7 @@ class ListingRecentPhotosTestCase(TestCase):
             self.assertFalse(
                 os.path.exists(os.path.join(base_dir, os.path.normpath("2018/07/31"))))
 
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_listing_recent_photos_with_missing_filenameEnc(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -172,7 +173,7 @@ class ListingRecentPhotosTestCase(TestCase):
                         os.path.join(base_dir, os.path.normpath("2018/07/30/AZ_wAGT9P6jh.JPG")),
                         filenames[4]
                     )
-                    assert result.exit_code == 0
+                    assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
 
     # This was used to solve the missing filenameEnc error. I found
@@ -235,4 +236,4 @@ Include a link to the Gist in your issue, so that we can see what went wrong.
                     self.assertEqual(
                         first_arg['asset_record']['fields']['assetDate']['value'],
                         1533021744816)
-                    assert result.exit_code == 0
+                    assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value

@@ -5,6 +5,7 @@ from freezegun import freeze_time
 import os
 from click.testing import CliRunner
 from icloudpd.base import main
+import icloudpd.constants as constants
 import inspect
 import shutil
 
@@ -43,7 +44,7 @@ class EmailNotificationsTestCase(TestCase):
                     ],
                 )
                 print(result.output)
-                assert result.exit_code == 1
+                assert result.exit_code == constants.ExitCode.EXIT_FAILED_2FA_REQUIRED
             smtp_instance = smtp()
             smtp_instance.connect.assert_called_once()
             smtp_instance.starttls.assert_called_once()
@@ -90,7 +91,7 @@ class EmailNotificationsTestCase(TestCase):
                     ],
                 )
                 print(result.output)
-                assert result.exit_code == 1
+                assert result.exit_code == constants.ExitCode.EXIT_FAILED_2FA_REQUIRED
             smtp_instance = smtp()
             smtp_instance.connect.assert_called_once()
             smtp_instance.starttls.assert_not_called()
@@ -134,5 +135,5 @@ class EmailNotificationsTestCase(TestCase):
                     ],
                 )
                 print(result.output)
-                assert result.exit_code == 1
+                assert result.exit_code == constants.ExitCode.EXIT_FAILED_2FA_REQUIRED
             subprocess_patched.assert_called_once_with(["./test_script.sh"])

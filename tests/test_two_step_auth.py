@@ -6,6 +6,7 @@ import os
 import click
 from click.testing import CliRunner
 from icloudpd.base import main
+import icloudpd.constants as constants
 from pyicloud import PyiCloudService
 import inspect
 import shutil
@@ -47,7 +48,7 @@ class TwoStepAuthTestCase(TestCase):
                 "ERROR    Failed to verify two-factor authentication code",
                 self._caplog.text,
             )
-            assert result.exit_code == 1
+            assert result.exit_code == constants.ExitCode.EXIT_FAILED_VERIFY_2FA_CODE
 
     def test_2sa_flow_device_2fa(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -96,7 +97,7 @@ class TwoStepAuthTestCase(TestCase):
             self.assertIn(
                 "INFO     All photos have been downloaded!", self._caplog.text
             )
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_2sa_flow_sms(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -145,7 +146,7 @@ class TwoStepAuthTestCase(TestCase):
             self.assertIn(
                 "INFO     All photos have been downloaded!", self._caplog.text
             )
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_2sa_flow_sms_failed(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -190,4 +191,4 @@ class TwoStepAuthTestCase(TestCase):
                     "ERROR    Failed to send two-factor authentication code",
                     self._caplog.text,
                 )
-                assert result.exit_code == 1
+                assert result.exit_code ==constants.ExitCode.EXIT_FAILED_SEND_2FA_CODE

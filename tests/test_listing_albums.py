@@ -7,6 +7,7 @@ from click.testing import CliRunner
 import json
 import mock
 from icloudpd.base import main
+import icloudpd.constants as constants
 from tests.helpers.print_result_exception import print_result_exception
 import inspect
 
@@ -46,4 +47,4 @@ class ListingAlbumsTestCase(TestCase):
             self.assertIn("Recently Deleted", albums)
             self.assertIn("Favorites", albums)
 
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value

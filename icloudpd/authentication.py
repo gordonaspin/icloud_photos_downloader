@@ -6,14 +6,8 @@ import logging
 
 import pyicloud
 from icloudpd.logger import setup_logger
-
-
-class TwoStepAuthRequiredError(Exception):
-    """
-    Raised when 2SA is required. base.py catches this exception
-    and sends an email notification.
-    """
-
+import icloudpd.constants as constants
+from pyicloud.exceptions import PyiCloud2SARequiredException
 
 def authenticate(
         username,
@@ -42,7 +36,7 @@ def authenticate(
 
     if icloud.requires_2sa:
         if raise_error_on_2sa:
-            raise TwoStepAuthRequiredError(
+            raise PyiCloud2SARequiredException(
                 "Two-step/two-factor authentication is required!"
             )
         logger.info("Two-step/two-factor authentication is required!")
@@ -81,12 +75,12 @@ def request_2sa(icloud, logger):
         device = devices[device_index]
         if not icloud.send_verification_code(device):
             logger.error("Failed to send two-factor authentication code")
-            sys.exit(1)
+            sys.exit(constants.ExitCode.EXIT_FAILED_SEND_2FA_CODE.value)
 
     code = click.prompt("Please enter two-factor authentication code")
     if not icloud.validate_verification_code(device, code):
         logger.error("Failed to verify two-factor authentication code")
-        sys.exit(1)
+        sys.exit(constants.ExitCode.EXIT_FAILED_VERIFY_2FA_CODE.value)
     logger.info(
         "Great, you're all set up. The script can now be run without "
         "user interaction until 2SA expires.\n"

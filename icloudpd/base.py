@@ -29,7 +29,7 @@ from icloudpd.paths import local_download_path
 from icloudpd.paths import build_download_dir
 from icloudpd import exif_datetime
 # Must import the constants object so that we can mock values in tests.
-from icloudpd import constants
+import icloudpd.constants as constants
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -109,7 +109,7 @@ def main(
     # check required directory param only if not list albums
     if not list_albums and not directory:
         print('--directory or --list-albums are required')
-        sys.exit(2)
+        sys.exit(constants.ExitCode.EXIT_FAILED_MISSING_COMMAND.value)
 
     raise_error_on_2sa = (
         smtp_username is not None
@@ -139,9 +139,10 @@ def main(
                 notification_email,
             )
         print(ex)
+        sys.exit(constants.ExitCode.EXIT_FAILED_2FA_REQUIRED)
     except PyiCloudFailedLoginException as ex:
         print(ex)
-        sys.exit(1)
+        sys.exit(constants.ExitCode.EXIT_FAILED_LOGIN.value)
 
     # Default album is "All Photos", so this is the same as
     # calling `icloud.photos.all`.
@@ -154,7 +155,7 @@ def main(
         # For later: come up with a nicer message to the user. For now take the
         # exception text
         print(ex)
-        sys.exit(1)
+        sys.exit(constants.ExitCode.EXIT_FAILED_CLOUD_API.value)
 
     albums = icloud.photos.albums.values()
     logger.info(f"there are {len(photos)} assets in {len(albums)} albums in your library")
@@ -165,7 +166,7 @@ def main(
         if skip_smart_folders:
             album_titles = [album for album in album_titles if album not in icloud.photos.SMART_FOLDERS.keys()]
         print(*album_titles, sep="\n")
-        sys.exit(0)
+        sys.exit(constants.ExitCode.EXIT_NORMAL.value)
 
     directory = os.path.normpath(directory)
     newest_created_date = datetime.datetime.fromtimestamp(0).astimezone(get_localzone())
@@ -388,7 +389,7 @@ def main(
                 break
 
         if only_print_filenames:
-            sys.exit(0)
+            sys.exit(constants.ExitCode.EXIT_NORMAL.value)
 
         if not reached_date_since:
             logger.info(f"{album}: processed all assets")

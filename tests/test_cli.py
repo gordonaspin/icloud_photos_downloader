@@ -6,6 +6,8 @@ from vcr import VCR
 import pytest
 from click.testing import CliRunner
 from icloudpd.base import main
+import icloudpd.constants as constants
+
 import inspect
 
 vcr = VCR(decode_compressed_response=True)
@@ -19,7 +21,7 @@ class CliTestCase(TestCase):
     def test_cli(self):
         runner = CliRunner()
         result = runner.invoke(main, ["--help"])
-        assert result.exit_code == 0
+        assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_log_levels(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -53,7 +55,7 @@ class CliTestCase(TestCase):
                         base_dir,
                     ],
                 )
-                assert result.exit_code == 0
+                assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
             for text in expected:
                 self.assertIn(text, self._caplog.text)
             for text in not_expected:
@@ -83,7 +85,7 @@ class CliTestCase(TestCase):
                     base_dir,
                 ],
             )
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_unicode_directory(self):
         with vcr.use_cassette("tests/vcr_cassettes/listing_photos.yml"):
@@ -106,7 +108,7 @@ class CliTestCase(TestCase):
                     "tests/fixtures/相片",
                 ],
             )
-            assert result.exit_code == 0
+            assert result.exit_code == constants.ExitCode.EXIT_NORMAL.value
 
     def test_missing_directory(self):
         base_dir = os.path.normpath(f"tests/fixtures/Photos/{inspect.stack()[0][3]}")
@@ -129,7 +131,7 @@ class CliTestCase(TestCase):
                 base_dir
             ],
         )
-        assert result.exit_code == 2
+        assert result.exit_code == constants.ExitCode.EXIT_FAILED_MISSING_COMMAND.value
 
     def test_missing_directory_param(self):
         runner = CliRunner()
@@ -146,4 +148,4 @@ class CliTestCase(TestCase):
                 "info",
             ],
         )
-        assert result.exit_code == 2
+        assert result.exit_code == constants.ExitCode.EXIT_FAILED_MISSING_COMMAND.value
