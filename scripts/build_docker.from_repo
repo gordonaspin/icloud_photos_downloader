@@ -14,7 +14,7 @@ echo "Current icloudpd version: ${ICLOUDPD_VERSION}"
 
 docker build \
   -t "gordonaspin/icloudpd:${ICLOUDPD_VERSION}" \
-  -f "Dockerfile.release" \
+  -f "Dockerfile.from_repo" \
   --build-arg ICLOUDPD_VERSION=${ICLOUDPD_VERSION} \
   "$ROOT_DIR"
 

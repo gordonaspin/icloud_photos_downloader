@@ -17,7 +17,7 @@ def authenticate(
         client_id=None
 ):
     """Authenticate with iCloud username and password"""
-    logger = logging.getLogger("icloudpd")
+    logger = setup_logger()
     logger.debug("Authenticating...")
     try:
         # If password not provided on command line variable will be set to None

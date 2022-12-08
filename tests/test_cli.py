@@ -44,9 +44,9 @@ class CliTestCase(TestCase):
                     main,
                     [
                         "--username",
-                        "jdoe@gmail.com",
+                        "gordon.aspin@gmail.com",
                         "--password",
-                        "password1",
+                        "0Summer2021.!",
                         "--recent",
                         "0",
                         "--log-level",
@@ -131,7 +131,7 @@ class CliTestCase(TestCase):
                 base_dir
             ],
         )
-        assert result.exit_code == constants.ExitCode.EXIT_FAILED_MISSING_COMMAND.value
+        assert result.exit_code == constants.ExitCode.EXIT_CLICK_USAGE.value
 
     def test_missing_directory_param(self):
         runner = CliRunner()

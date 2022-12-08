@@ -33,7 +33,6 @@ class AuthenticationTestCase(TestCase):
         self.assertTrue("Invalid email/password combination." in str(context.exception))
 
     def test_2sa_required(self):
-        setup_logger("debug", False)
         with vcr.use_cassette("tests/vcr_cassettes/auth_requires_2sa.yml"):
             with self.assertRaises(PyiCloud2SARequiredException) as context:
                 # To re-record this HTTP request,

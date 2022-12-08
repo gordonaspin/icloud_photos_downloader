@@ -44,7 +44,7 @@ class EmailNotificationsTestCase(TestCase):
                     ],
                 )
                 print(result.output)
-                assert result.exit_code == constants.ExitCode.EXIT_FAILED_2FA_REQUIRED
+                assert result.exit_code == constants.ExitCode.EXIT_FAILED_2FA_REQUIRED.value
             smtp_instance = smtp()
             smtp_instance.connect.assert_called_once()
             smtp_instance.starttls.assert_called_once()
@@ -91,7 +91,7 @@ class EmailNotificationsTestCase(TestCase):
                     ],
                 )
                 print(result.output)
-                assert result.exit_code == constants.ExitCode.EXIT_FAILED_2FA_REQUIRED
+                assert result.exit_code == constants.ExitCode.EXIT_FAILED_2FA_REQUIRED.value
             smtp_instance = smtp()
             smtp_instance.connect.assert_called_once()
             smtp_instance.starttls.assert_not_called()
@@ -135,5 +135,5 @@ class EmailNotificationsTestCase(TestCase):
                     ],
                 )
                 print(result.output)
-                assert result.exit_code == constants.ExitCode.EXIT_FAILED_2FA_REQUIRED
+                assert result.exit_code == constants.ExitCode.EXIT_FAILED_2FA_REQUIRED.value
             subprocess_patched.assert_called_once_with(["./test_script.sh"])

@@ -30,9 +30,9 @@ class ListingAlbumsTestCase(TestCase):
                 main,
                 [
                     "--username",
-                    "jdoe@gmail.com",
+                    "gordon.aspin@gmail.com",
                     "--password",
-                    "password1",
+                    "0Summer2021.!",
                     "--list-albums",
                     "--no-progress-bar",
                 ],

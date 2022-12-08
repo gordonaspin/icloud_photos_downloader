@@ -104,8 +104,20 @@ def main(
         threads_num,    # pylint: disable=W0613
 ):
     """Download all iCloud photos to a local directory"""
-    logger = setup_logger(log_level, only_print_filenames)
-
+    logger = setup_logger()
+    if only_print_filenames:
+        logger.disabled = True
+    else:
+        # Need to make sure disabled is reset to the correct value,
+        # because the logger instance is shared between tests.
+        logger.disabled = False
+        if log_level == "debug":
+            logger.setLevel(logging.DEBUG)
+        elif log_level == "info":
+            logger.setLevel(logging.INFO)
+        elif log_level == "error":
+            logger.setLevel(logging.ERROR)
+            
     # check required directory param only if not list albums
     if not list_albums and not directory:
         print('--directory or --list-albums are required')
@@ -118,7 +130,7 @@ def main(
     )
     raise_error_on_2sa = False
     try:
-        logger.info("connecting to iCloudService...")
+        logger.debug("connecting to iCloudService...")
         #icloud = PyiCloudService(
         icloud = authenticate(
             username,
@@ -139,7 +151,7 @@ def main(
                 notification_email,
             )
         print(ex)
-        sys.exit(constants.ExitCode.EXIT_FAILED_2FA_REQUIRED)
+        sys.exit(constants.ExitCode.EXIT_FAILED_2FA_REQUIRED.value)
     except PyiCloudFailedLoginException as ex:
         print(ex)
         sys.exit(constants.ExitCode.EXIT_FAILED_LOGIN.value)
