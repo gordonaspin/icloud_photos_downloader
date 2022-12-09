@@ -15,8 +15,10 @@ echo "Current icloudpd version: ${ICLOUDPD_VERSION}"
 docker build \
   -t "gordonaspin/icloudpd:${ICLOUDPD_VERSION}" \
   -f "Dockerfile.from_repo" \
+  --no-cache \
   --build-arg ICLOUDPD_VERSION=${ICLOUDPD_VERSION} \
   "$ROOT_DIR"
 
 docker tag "gordonaspin/icloudpd:${ICLOUDPD_VERSION}" "gordonaspin/icloudpd:${ICLOUDPD_VERSION}-alpine"
 docker tag "gordonaspin/icloudpd:${ICLOUDPD_VERSION}" "gordonaspin/icloudpd:latest"
+docker push -a gordonaspin/icloudpd

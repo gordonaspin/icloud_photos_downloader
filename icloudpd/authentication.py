@@ -48,6 +48,7 @@ def request_2sa(icloud, logger):
     """Request two-step authentication. Prompts for SMS or device"""
     devices = icloud.trusted_devices
     devices_count = len(devices)
+    logger.debug(f"request_2sa() devices_count: {devices_count}, devices: {devices}")
     device_index = 0
     if devices_count > 0:
         for i, device in enumerate(devices):
