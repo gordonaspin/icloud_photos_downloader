@@ -43,13 +43,13 @@ def download_media(icloud, photo, download_path, size):
         except OSError:  # pragma: no cover
             pass         # pragma: no cover
 
-    for retries in range(constants.MAX_RETRIES):
+    for retries in range(constants.DOWNLOAD_MEDIA_MAX_RETRIES):
         try:
             photo_response = photo.download(size)
             if photo_response:
                 temp_download_path = download_path + ".part"
                 with open(temp_download_path, "wb") as file_obj:
-                    for chunk in photo_response.iter_content(chunk_size=constants.CHUNK_SIZE):
+                    for chunk in photo_response.iter_content(chunk_size=constants.DOWNLOAD_MEDIA_CHUNK_SIZE):
                         if chunk:
                             file_obj.write(chunk)
                 os.rename(temp_download_path, download_path)
@@ -72,12 +72,12 @@ def download_media(icloud, photo, download_path, size):
                     # If the first reauthentication attempt failed,
                     # start waiting a few seconds before retrying in case
                     # there are some issues with the Apple servers
-                    time.sleep(constants.WAIT_SECONDS)
+                    time.sleep(constants.DOWNLOAD_MEDIA_RETRY_CONNECTION_WAIT_SECONDS)
 
                 icloud.authenticate()
             else:
                 # you end up here when p.e. throttleing by Apple happens
-                wait_time = (retries + 1) * constants.WAIT_SECONDS
+                wait_time = (retries + 1) * constants.DOWNLOAD_MEDIA_RETRY_CONNECTION_WAIT_SECONDS
                 logger.tqdm_write(
                     "Error downloading %s, retrying after %d seconds..."
                     % (photo.filename, wait_time),

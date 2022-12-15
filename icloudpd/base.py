@@ -1,35 +1,36 @@
 #!/usr/bin/env python
 """Main script that uses Click to parse command-line arguments"""
 from __future__ import print_function
-import os
-import sys
+
 import datetime
-import time
-import logging
 import itertools
-import subprocess
 import json
+import logging
+import os
+import subprocess
+import sys
+import time
+
 import click
 import urllib3
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+from pyicloud.exceptions import (PyiCloud2SARequiredException,
+                                 PyiCloudAPIResponseException,
+                                 PyiCloudFailedLoginException)
 from tqdm import tqdm
 from tzlocal import get_localzone
 
-from pyicloud.exceptions import PyiCloudAPIResponseException
-from icloudpd.logger import setup_logger
-from pyicloud.exceptions import PyiCloud2SARequiredException
-from pyicloud.exceptions import PyiCloudFailedLoginException
-from icloudpd import download
-from icloudpd.authentication import authenticate
-from icloudpd.email_notifications import send_2sa_notification
-from icloudpd.string_helpers import truncate_middle
-from icloudpd.autodelete import autodelete_photos
-from icloudpd.paths import local_download_path
-from icloudpd.paths import build_download_dir
-from icloudpd import exif_datetime
 # Must import the constants object so that we can mock values in tests.
 import icloudpd.constants as constants
+from icloudpd import download, exif_datetime
+from icloudpd.authentication import authenticate
+from icloudpd.autodelete import autodelete_photos
+from icloudpd.email_notifications import send_2sa_notification
+from icloudpd.logger import setup_logger
+from icloudpd.paths import build_download_dir, local_download_path
+from icloudpd.string_helpers import truncate_middle
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -63,7 +64,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option("--smtp-no-tls",      help="Pass this flag to disable TLS for SMTP (TLS is required for Gmail)", metavar="<smtp_no_tls>", is_flag=True)
 @click.option("--notification-email", help="Email address where you would like to receive email notifications. Default: SMTP username", metavar="<notification_email>")
 @click.option("--notification-script", type=click.Path(), help="Runs an external script when two factor authentication expires. (path required: /path/to/my/script.sh)")
-@click.option("--log-level",        help="Log level (default: info)", type=click.Choice(["debug", "info", "error"]), default="info")
+@click.option("--log-level",        help="Log level (default: debug)", type=click.Choice(["debug", "info", "error"]), default="debug")
 @click.option("--no-progress-bar",  help="Disables the one-line progress bar and prints log messages on separate lines (Progress bar is disabled by default if there is no tty attached)", is_flag=True)
 @click.option("--threads-num",      help="Number of cpu threads -- deprecated. To be removed in future version", type=click.IntRange(1), default=1)
 #@click.version_option()
@@ -123,12 +124,12 @@ def main(
         print('--directory or --list-albums are required')
         sys.exit(constants.ExitCode.EXIT_FAILED_MISSING_COMMAND.value)
 
-    raise_error_on_2sa = (
+    raise_exception_on_2sa = (
         smtp_username is not None
         or notification_email is not None
         or notification_script is not None
     )
-    raise_error_on_2sa = False
+
     try:
         logger.debug("connecting to iCloudService...")
         #icloud = PyiCloudService(
@@ -136,12 +137,14 @@ def main(
             username,
             password,
             cookie_directory,
-            raise_error_on_2sa,
+            raise_exception_on_2sa,
             client_id=os.environ.get("CLIENT_ID"))
     except PyiCloud2SARequiredException as ex:
         if notification_script is not None:
+            logger.debug(f"executing notification script {notification_script}")
             subprocess.call([notification_script])
         if smtp_username is not None or notification_email is not None:
+            logger.debug(f"sending 2sa email notification")
             send_2sa_notification(
                 smtp_username,
                 smtp_password,
@@ -192,7 +195,7 @@ def main(
         """Handles session errors in the PhotoAlbum photos iterator"""
         nonlocal icloud
         if "Invalid global session" in str(ex):
-            if retries > constants.MAX_RETRIES:
+            if retries > constants.DOWNLOAD_MEDIA_MAX_RETRIES:
                 logger.tqdm_write("iCloud re-authentication failed! Please try again later.")
                 raise ex
             logger.tqdm_write(
@@ -202,7 +205,7 @@ def main(
                 # If the first reauthentication attempt failed,
                 # start waiting a few seconds before retrying in case
                 # there are some issues with the Apple servers
-                time.sleep(constants.WAIT_SECONDS * retries)
+                time.sleep(constants.DOWNLOAD_MEDIA_RETRY_CONNECTION_WAIT_SECONDS * retries)
             icloud = authenticate(username, password)
 
     photos.exception_handler = photos_exception_handler
