@@ -43,7 +43,7 @@ def setup_logger():
             has_stdout_handler = True
     if not has_stdout_handler:
         formatter = logging.Formatter(
-            fmt="%(asctime)s %(name)s:%(module)s %(levelname)-8s %(message)s",
+            fmt="%(asctime)s %(levelname)-8s %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S")
         stdout_handler = logging.StreamHandler(stream=sys.stdout)
         stdout_handler.setFormatter(formatter)
