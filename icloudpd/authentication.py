@@ -28,95 +28,93 @@ def authenticate(
         raise_exception_on_2sa = True
 
     failure_count = 0
-    try:
-        api = pyicloud.PyiCloudService(
-            username,
-            password,
-            cookie_directory=cookie_directory,
-            client_id=client_id)
-            
-        if api.requires_2fa:
-            # fmt: off
-            print(
-                "\nTwo-factor (2FA) authentication required.",
-                "\nPlease enter validation code"
-            )
-            # fmt: on
-            if raise_exception_on_2sa:
-                raise PyiCloud2SARequiredException
-
-            code = input("(string) --> ")
-            if not api.validate_2fa_code(code):
-                logger.debug("Failed to verify (2FA) verification code")
-                sys.exit(constants.ExitCode.EXIT_FAILED_VERIFY_2FA_CODE.value)
+    while True:
+        try:
+            logger.debug(f"username: {username}")
+            logger.debug(f"password: {password}")
+            logger.debug(f"cookie_directory: {cookie_directory}")
+            logger.debug(f"client_id: {client_id}")
+            api = pyicloud.PyiCloudService(
+                username,
+                password,
+                cookie_directory=cookie_directory,
+                client_id=client_id)
                 
-        elif api.requires_2sa:
-            # fmt: off
-            print(
-                "\nTwo-step (2SA) authentication required.",
-                "\nYour trusted devices are:"
-            )
-            # fmt: on
-            if raise_exception_on_2sa:
-                raise PyiCloud2SARequiredException
-
-            devices = api.trusted_devices
-            for i, device in enumerate(devices):
+            if api.requires_2fa:
+                # fmt: off
                 print(
-                    "    %s: %s"
-                    % (
-                        i,
-                        device.get(
-                            "deviceName", "SMS to %s" % device.get("phoneNumber")
-                        ),
-                    )
+                    "\nTwo-factor (2FA) authentication required.",
+                    "\nPlease enter validation code"
                 )
+                # fmt: on
+                if raise_exception_on_2sa:
+                    raise PyiCloud2SARequiredException
 
-            print("\nWhich device would you like to use?")
-            device = int(input("(number) --> "))
-            device = devices[device]
-            if not api.send_verification_code(device):
-                logger.debug("Failed to send verification code")
-                sys.exit(constants.ExitCode.EXIT_FAILED_SEND_2SA_CODE)
+                code = input("(string) --> ")
+                if not api.validate_2fa_code(code):
+                    logger.debug("Failed to verify (2FA) verification code")
+                    sys.exit(constants.ExitCode.EXIT_FAILED_VERIFY_2FA_CODE.value)
+                    
+            elif api.requires_2sa:
+                # fmt: off
+                print(
+                    "\nTwo-step (2SA) authentication required.",
+                    "\nYour trusted devices are:"
+                )
+                # fmt: on
+                if raise_exception_on_2sa:
+                    raise PyiCloud2SARequiredException
 
-            print("\nPlease enter two-step (2SA) validation code")
-            code = input("(string) --> ")
-            if not api.validate_verification_code(device, code):
-                print("Failed to verify verification code")
-                sys.exit(constants.ExitCode.EXIT_FAILED_VERIFY_2FA_CODE)
-        # Auth success
-        logger.info(f"Authenticated as {username}")
-        return api
+                devices = api.trusted_devices
+                for i, device in enumerate(devices):
+                    print(
+                        "    %s: %s"
+                        % (
+                            i,
+                            device.get(
+                                "deviceName", "SMS to %s" % device.get("phoneNumber")
+                            ),
+                        )
+                    )
 
-    except PyiCloudFailedLoginException as err:
-        # If the user has a stored password; we just used it and
-        # it did not work; let's delete it if there is one.
-        if utils.password_exists_in_keyring(username):
-            utils.delete_password_in_keyring(username)
+                print("\nWhich device would you like to use?")
+                device = int(input("(number) --> "))
+                device = devices[device]
+                if not api.send_verification_code(device):
+                    logger.debug("Failed to send verification code")
+                    sys.exit(constants.ExitCode.EXIT_FAILED_SEND_2SA_CODE)
 
-        message = "Bad username or password for {username}".format(username=username)
-        failure_count += 1
-        if failure_count >= constants.AUTHENTICATION_MAX_RETRIES:
-            raise PyiCloudFailedLoginException(message)
+                print("\nPlease enter two-step (2SA) validation code")
+                code = input("(string) --> ")
+                if not api.validate_verification_code(device, code):
+                    print("Failed to verify verification code")
+                    sys.exit(constants.ExitCode.EXIT_FAILED_VERIFY_2FA_CODE)
+            # Auth success
+            logger.info(f"Authenticated as {username}")
+            return api
 
-        logger.info(message)
+        except PyiCloudFailedLoginException as err:
+            # If the user has a stored password; we just used it and
+            # it did not work; let's delete it if there is one.
+            if utils.password_exists_in_keyring(username):
+                utils.delete_password_in_keyring(username)
 
-    except PyiCloudNoStoredPasswordAvailableException:
-       # Prompt for password if not stored in PyiCloud's keyring
-        password = click.prompt("iCloud Password", hide_input=True)
-        api = pyicloud.PyiCloudService(
-                            username, password,
-                            cookie_directory=cookie_directory,
-                            client_id=client_id)
-        if (
-            not utils.password_exists_in_keyring(username)
-            and sys.stdout.isatty()
-            and click.confirm("Save password in keyring?")
-        ):
-            utils.store_password_in_keyring(username, password)
+            message = "Bad username or password for {username}".format(username=username)
+            failure_count += 1
+            if failure_count >= constants.AUTHENTICATION_MAX_RETRIES:
+                raise PyiCloudFailedLoginException(message)
 
+            logger.info(message)
 
-
+        except PyiCloudNoStoredPasswordAvailableException:
+        # Prompt for password if not stored in PyiCloud's keyring
+            password = click.prompt("iCloud Password", hide_input=True)
+            if (
+                not utils.password_exists_in_keyring(username)
+                and sys.stdout.isatty()
+                and click.confirm("Save password in keyring?")
+            ):
+                utils.store_password_in_keyring(username, password)
 
 def old_authenticate(
         username,
