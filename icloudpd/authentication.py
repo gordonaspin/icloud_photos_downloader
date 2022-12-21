@@ -31,7 +31,7 @@ def authenticate(
     while True:
         try:
             logger.debug(f"username: {username}")
-            logger.debug(f"password: {password}")
+            logger.debug(f"password: {password is not None}")
             logger.debug(f"cookie_directory: {cookie_directory}")
             logger.debug(f"client_id: {client_id}")
             api = pyicloud.PyiCloudService(
