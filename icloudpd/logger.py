@@ -3,7 +3,7 @@
 import sys
 import logging
 from logging import INFO
-
+from icloudpd.database import DatabaseHandler
 
 class IPDLogger(logging.Logger):
     """Custom logger class with support for tqdm progress bar"""
@@ -38,21 +38,34 @@ def setup_logger():
     pyicloud_logger = logging.getLogger('pyicloud')
 
     has_stdout_handler = False
+    has_database_handler = False
+
     for handler in logger.handlers:
         if handler.name == "stdoutLogger":
             has_stdout_handler = True
-    if not has_stdout_handler:
-        formatter = logging.Formatter(
-            fmt="%(asctime)s %(levelname)-8s %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S")
-        stdout_handler = logging.StreamHandler(stream=sys.stdout)
-        stdout_handler.setFormatter(formatter)
-        stdout_handler.name = "stdoutLogger"
-        logger.addHandler(stdout_handler)
-        pyicloud_logger.addHandler(stdout_handler)
+        if handler.name == "databaseLogger":
+            has_database_handler = True
 
-    
+    formatter = logging.Formatter(
+        fmt="%(asctime)s %(levelname)-8s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S")
+
+    if not has_stdout_handler:
+        handler = logging.StreamHandler(stream=sys.stdout)
+        handler.setFormatter(formatter)
+        handler.name = "stdoutLogger"
+        logger.addHandler(handler)
+        pyicloud_logger.addHandler(handler)
+
+    if not has_database_handler:
+        handler = DatabaseHandler()
+        handler.setFormatter(formatter)
+        handler.name = "databaseLogger"
+        logger.addHandler(handler)
+        pyicloud_logger.addHandler(handler)
+
     pyicloud_logger.disabled = logger.disabled
     pyicloud_logger.setLevel(logger.level)
 
     return logger
+

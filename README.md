@@ -2,9 +2,10 @@
 
 - A command-line tool to download all your iCloud photos.
 - Works on Linux, Windows, and MacOS.
-- Run as a [scheduled cron task](#cron-task) to keep a local backup of your photos and videos.
+- Run as a [scheduled cron task](#cron-task) to keep a local backup of your photos and videos
+- Run as a docker container, available directly from dockerhub at docker pull gordonaspin/icloudpd:latest
 
-This tool is developed and maintained by volunteers (we are always looking for [help](CONTRIBUTING.md)...). We aim to release new versions once a week (Friday), if there is something worth delivering.
+This tool is forked from the original icloud_photos_downloader developed and maintained by volunteers. They are always looking for [help](CONTRIBUTING.md)...). I am happy to entertain feature requests on this fork. I aim to release new versions if there is something worth delivering.
 
 ## Install
 
@@ -44,6 +45,9 @@ Options:
                                   (default: download all photos)  [x>=0]
   --date-since [%Y-%m-%d|%Y-%m-%d-%H:%M:%S]
                                   Download only assets newer than date-since
+  --newest                        Download only assets newer than newest asset
+                                  date from local icloudpd.db. Will override
+                                  --date-since value.
   --until-found INTEGER RANGE     Download most recently added photos until we
                                   find x number of previously downloaded
                                   consecutive photos (default: download all
@@ -100,13 +104,11 @@ Options:
   --notification-script PATH      Runs an external script when two factor
                                   authentication expires. (path required:
                                   /path/to/my/script.sh)
-  --log-level [debug|info|error]  Log level (default: info)
+  --log-level [debug|info|error]  Log level (default: debug)
   --no-progress-bar               Disables the one-line progress bar and
                                   prints log messages on separate lines
                                   (Progress bar is disabled by default if
                                   there is no tty attached)
-  --threads-num INTEGER RANGE     Number of cpu threads -- deprecated. To be
-                                  removed in future version  [x>=1]
   -h, --help                      Show this message and exit.
 ```
 
@@ -124,6 +126,7 @@ icloudpd --directory ./Photos \
 
 - Python 3.10+
 - pip
+- sqlite3
 
 ### Install Python & pip
 
@@ -209,7 +212,7 @@ Follow these instructions to run `icloudpd` as a scheduled cron task.
 
 ``` sh
 # Clone the git repo somewhere
-git clone https://github.com/icloud-photos-downloader/icloud_photos_downloader.git
+git clone https://github.com/gordonaspin/icloud_photos_downloader.git
 cd icloud_photos_downloader
 
 # Copy the example cron script
@@ -231,7 +234,7 @@ Now the script will run every 6 hours to download any new photos and videos.
 
 ## Docker
 
-This script is available in a Docker image: `docker pull gordonaspin/icloudpd`
+This script is available in a Docker image: `docker pull gordonaspin/icloudpd:latest`
 
 Usage:
 

@@ -31,6 +31,7 @@ from icloudpd.email_notifications import send_2sa_notification
 from icloudpd.logger import setup_logger
 from icloudpd.paths import build_download_dir, local_download_path
 from icloudpd.string_helpers import truncate_middle
+import icloudpd.database as database
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -44,6 +45,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option("--live-photo-size",  help="Live Photo video size to download (default: original)", type=click.Choice(["original", "medium", "thumb"]), default="original")
 @click.option("--recent",           help="Number of recent photos to download (default: download all photos)", type=click.IntRange(0))
 @click.option('--date-since',       help="Download only assets newer than date-since", type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%d-%H:%M:%S"]))
+@click.option('--newest',           help="Download only assets newer than newest asset date from local icloudpd.db. Will override --date-since value.", is_flag=True)
 @click.option("--until-found",      help="Download most recently added photos until we find x number of previously downloaded consecutive photos (default: download all photos)", type=click.IntRange(0))
 @click.option("-a", "--album",      help="Album to download (default: All Photos)", metavar="<album>", default="All Photos")
 @click.option("--all-albums",       help="Download all albums", is_flag=True)
@@ -66,7 +68,6 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option("--notification-script", type=click.Path(), help="Runs an external script when two factor authentication expires. (path required: /path/to/my/script.sh)")
 @click.option("--log-level",        help="Log level (default: debug)", type=click.Choice(["debug", "info", "error"]), default="debug")
 @click.option("--no-progress-bar",  help="Disables the one-line progress bar and prints log messages on separate lines (Progress bar is disabled by default if there is no tty attached)", is_flag=True)
-@click.option("--threads-num",      help="Number of cpu threads -- deprecated. To be removed in future version", type=click.IntRange(1), default=1)
 #@click.version_option()
 # pylint: disable-msg=too-many-arguments,too-many-statements
 # pylint: disable-msg=too-many-branches,too-many-locals
@@ -80,6 +81,7 @@ def main(
         live_photo_size,
         recent,
         date_since,
+        newest,
         until_found,
         album,
         all_albums,
@@ -101,10 +103,10 @@ def main(
         notification_email,
         log_level,
         no_progress_bar,
-        notification_script,
-        threads_num,    # pylint: disable=W0613
+        notification_script,         # pylint: disable=W0613
 ):
     """Download all iCloud photos to a local directory"""
+    database.setup_database(directory)
     logger = setup_logger()
     if only_print_filenames:
         logger.disabled = True
@@ -189,7 +191,18 @@ def main(
 
     if date_since is not None:
         date_since = date_since.astimezone(get_localzone())
-        logger.debug(f"assets older than {date_since} will be skipped")
+        logger.info(f"assets older than {date_since} will be skipped (from date-since)")
+
+    if newest:
+        # (filename, created)
+        newest_asset = database.DatabaseHandler().newest_asset()
+        if newest is not None:
+            newest_created_date = newest_asset[1].astimezone(get_localzone())
+            date_since = newest_created_date
+            newest_asset_name = newest_asset[0]
+            logger.info(f"assets older than {date_since} will be skipped (from database)")
+        else:
+            logger.info(f"newest asset date not found in database")
 
     def photos_exception_handler(ex, retries):
         """Handles session errors in the PhotoAlbum photos iterator"""
@@ -315,6 +328,7 @@ def main(
                     return
 
             download_path = local_download_path(photo, download_size, download_dir)
+            database.DatabaseHandler().upsert_asset(album, photo)
 
             file_exists = os.path.isfile(download_path)
             if not file_exists and download_size == "original":
