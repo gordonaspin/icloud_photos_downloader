@@ -196,7 +196,7 @@ def main(
     if newest:
         # (filename, created)
         newest_asset = database.DatabaseHandler().newest_asset()
-        if newest is not None:
+        if newest_asset is not None:
             newest_created_date = newest_asset[1].astimezone(get_localzone())
             date_since = newest_created_date
             newest_asset_name = newest_asset[0]
