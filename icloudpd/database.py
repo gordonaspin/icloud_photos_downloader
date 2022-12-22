@@ -13,6 +13,7 @@ def setup_database(directory):
     sql.register_adapter(datetime, adapt_datetime)
 
 class DatabaseHandler(Handler):
+    is_pruned = False
 
     def __new__(cls):
         if not hasattr(cls, 'instance'):
@@ -28,10 +29,12 @@ class DatabaseHandler(Handler):
 
     def _pruneLogTable(self):
         try:
-            sql = "DELETE from Log"
-            self.db_conn.execute(sql)
-            self.db_conn.commit()
-            self.db_conn.execute("VACUUM")
+            if not DatabaseHandler.is_pruned:
+                sql = "DELETE from Log"
+                self.db_conn.execute(sql)
+                self.db_conn.commit()
+                DatabaseHandler.is_pruned = True
+                self.db_conn.execute("VACUUM")
         except sql.Error as er:
             self.print_error(er)
 
