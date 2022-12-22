@@ -28,7 +28,7 @@ class DatabaseHandler(Handler):
 
     def _pruneLogTable(self):
         try:
-            sql = f"DELETE from Log WHERE process <> {os.getpid()}"
+            sql = "DELETE from Log"
             self.db_conn.execute(sql)
             self.db_conn.commit()
             self.db_conn.execute("VACUUM")
