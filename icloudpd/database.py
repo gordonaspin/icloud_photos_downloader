@@ -24,6 +24,16 @@ class DatabaseHandler(Handler):
         self.db_conn = sql.connect(DatabaseHandler.db_file, detect_types=sql.PARSE_DECLTYPES | sql.PARSE_COLNAMES)
         self._createLogTable()
         self._createPhotoAssetTable()
+        self._pruneLogTable()
+
+    def _pruneLogTable(self):
+        try:
+            sql = f"DELETE from Log WHERE process <> {os.getpid()}"
+            self.db_conn.execute(sql)
+            self.db_conn.commit()
+            self.db_conn.execute("VACUUM")
+        except sql.Error as er:
+            self.print_error(er)
 
     def _createLogTable(self):
         try:
