@@ -42,29 +42,24 @@ def authenticate(
                 
             if api.requires_2fa:
                 # fmt: off
-                print(
-                    "\nTwo-factor (2FA) authentication required.",
-                    "\nPlease enter validation code"
-                )
+                print("\nTwo-factor (2FA) authentication required.")
                 # fmt: on
                 if raise_exception_on_2sa:
                     raise PyiCloud2SARequiredException(client_id)
 
-                code = input("(string) --> ")
+                code = input("\nPlease enter verification code: ")
                 if not api.validate_2fa_code(code):
                     logger.debug("Failed to verify (2FA) verification code")
                     sys.exit(constants.ExitCode.EXIT_FAILED_VERIFY_2FA_CODE.value)
                     
             elif api.requires_2sa:
                 # fmt: off
-                print(
-                    "\nTwo-step (2SA) authentication required.",
-                    "\nYour trusted devices are:"
-                )
+                print("\nTwo-step (2SA) authentication required.")
                 # fmt: on
                 if raise_exception_on_2sa:
                     raise PyiCloud2SARequiredException(client_id)
 
+                print("\nYour trusted devices are:")
                 devices = api.trusted_devices
                 for i, device in enumerate(devices):
                     print(
@@ -77,15 +72,13 @@ def authenticate(
                         )
                     )
 
-                print("\nWhich device would you like to use?")
-                device = int(input("(number) --> "))
+                device = int(input("\nWhich device number would you like to use: "))
                 device = devices[device]
                 if not api.send_verification_code(device):
                     logger.debug("Failed to send verification code")
                     sys.exit(constants.ExitCode.EXIT_FAILED_SEND_2SA_CODE)
 
-                print("\nPlease enter two-step (2SA) validation code")
-                code = input("(string) --> ")
+                code = input("\nPlease enter two-step (2SA) validation code: ")
                 if not api.validate_verification_code(device, code):
                     print("Failed to verify verification code")
                     sys.exit(constants.ExitCode.EXIT_FAILED_VERIFY_2FA_CODE)
