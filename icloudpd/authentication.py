@@ -48,7 +48,7 @@ def authenticate(
                 )
                 # fmt: on
                 if raise_exception_on_2sa:
-                    raise PyiCloud2SARequiredException
+                    raise PyiCloud2SARequiredException(client_id)
 
                 code = input("(string) --> ")
                 if not api.validate_2fa_code(code):
@@ -63,7 +63,7 @@ def authenticate(
                 )
                 # fmt: on
                 if raise_exception_on_2sa:
-                    raise PyiCloud2SARequiredException
+                    raise PyiCloud2SARequiredException(client_id)
 
                 devices = api.trusted_devices
                 for i, device in enumerate(devices):
