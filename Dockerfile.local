@@ -22,3 +22,7 @@ RUN set -xe \
   && pip list \
   && icloud -h | head -n1 \
   && date
+
+ARG USER_ID
+RUN adduser -D -g '' -u $USER_ID docker
+USER docker

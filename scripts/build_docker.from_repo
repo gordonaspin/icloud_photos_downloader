@@ -17,6 +17,7 @@ docker build \
   -f "Dockerfile.from_repo" \
   --no-cache \
   --build-arg ICLOUDPD_VERSION=${ICLOUDPD_VERSION} \
+  --build-arg USER_ID=$(id -u) \
   "$ROOT_DIR"
 
 docker tag "gordonaspin/icloudpd:${ICLOUDPD_VERSION}" "gordonaspin/icloudpd:${ICLOUDPD_VERSION}-alpine"

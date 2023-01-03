@@ -23,6 +23,7 @@ docker build \
   -f "Dockerfile.local" \
   --build-arg ICLOUDPD_VERSION=${ICLOUDPD_VERSION} \
   --build-arg PYICLOUD_VERSION=${PYICLOUD_VERSION} \
+  --build-arg USER_ID=$(id -u) \
   "$ROOT_DIR"
 
 docker tag "gordonaspin/icloudpd:${ICLOUDPD_VERSION}-local" "gordonaspin/icloudpd:${ICLOUDPD_VERSION}-local-alpine"
