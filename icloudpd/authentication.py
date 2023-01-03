@@ -16,16 +16,12 @@ def authenticate(
     username,
     password,
     cookie_directory=None,
-    raise_exception_on_2sa=False,
+    raise_authorization_exception=False,
     client_id=None
 ):
     """Authenticate with iCloud username and password"""
     logger = setup_logger()
     logger.debug("Authenticating...")
-
-    if not raise_exception_on_2sa and not sys.stdout.isatty():
-        logger.debug(f"raise_exception_on_2sa is {raise_exception_on_2sa}, but stdout is not a tty, forcing raise_exception_on_2sa to True")
-        raise_exception_on_2sa = True
 
     failure_count = 0
     while True:
@@ -34,6 +30,7 @@ def authenticate(
             logger.debug(f"password: {password is not None}")
             logger.debug(f"cookie_directory: {cookie_directory}")
             logger.debug(f"client_id: {client_id}")
+            logger.debug(f"raise_authorization_exception: {raise_authorization_exception}")
             api = pyicloud.PyiCloudService(
                 username,
                 password,
@@ -44,8 +41,8 @@ def authenticate(
                 # fmt: off
                 print("\nTwo-factor (2FA) authentication required.")
                 # fmt: on
-                if raise_exception_on_2sa:
-                    raise PyiCloud2SARequiredException(client_id)
+                if raise_authorization_exception:
+                    raise PyiCloud2SARequiredException(username)
 
                 code = input("\nPlease enter verification code: ")
                 if not api.validate_2fa_code(code):
@@ -56,8 +53,8 @@ def authenticate(
                 # fmt: off
                 print("\nTwo-step (2SA) authentication required.")
                 # fmt: on
-                if raise_exception_on_2sa:
-                    raise PyiCloud2SARequiredException(client_id)
+                if raise_authorization_exception:
+                    raise PyiCloud2SARequiredException(username)
 
                 print("\nYour trusted devices are:")
                 devices = api.trusted_devices
@@ -100,11 +97,14 @@ def authenticate(
             logger.info(message)
 
         except PyiCloudNoStoredPasswordAvailableException:
-        # Prompt for password if not stored in PyiCloud's keyring
+            if raise_authorization_exception:
+                message = f"No stored password available for {username} and not a TTY!"
+                raise PyiCloudFailedLoginException(message)
+
+            # Prompt for password if not stored in PyiCloud's keyring
             password = click.prompt("iCloud Password", hide_input=True)
             if (
                 not utils.password_exists_in_keyring(username)
-                and sys.stdout.isatty()
                 and click.confirm("Save password in keyring?")
             ):
                 utils.store_password_in_keyring(username, password)

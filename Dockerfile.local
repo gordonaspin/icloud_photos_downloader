@@ -9,14 +9,16 @@ RUN set -xe && \
     if [[ ! -e /usr/bin/python ]]; then ln -sf /usr/bin/python3 /usr/bin/python; fi && \
     rm -r /root/.cache
 
-RUN ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime
+ARG TZ="America/New_York"
+RUN cp /usr/share/zoneinfo/$TZ /etc/localtime
 
 ARG ICLOUDPD_VERSION
 ARG PYICLOUD_VERSION
-COPY dist/* /tmp
+COPY dist/* /tmp/
 RUN set -xe \
   && pip install wheel==0.35.1 \
   && pip install /tmp/pyicloud-${PYICLOUD_VERSION}-py2.py3-none-any.whl \
   && pip install /tmp/icloudpd-${ICLOUDPD_VERSION}-py2.py3-none-any.whl \
   && pip list \
-  && icloud -h | head -n1
+  && icloud -h | head -n1 \
+  && date

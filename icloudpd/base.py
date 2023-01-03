@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import time
+import hashlib
 
 import click
 import urllib3
@@ -126,10 +127,11 @@ def main(
         print('--directory or --list-albums are required')
         sys.exit(constants.ExitCode.EXIT_FAILED_MISSING_COMMAND.value)
 
-    raise_exception_on_2sa = (
+    raise_authorization_exception = (
         smtp_username is not None
         or notification_email is not None
         or notification_script is not None
+        or not sys.stdout.isatty()
     )
 
     try:
@@ -139,7 +141,7 @@ def main(
             username,
             password,
             cookie_directory,
-            raise_exception_on_2sa,
+            raise_authorization_exception,
             client_id=os.environ.get("CLIENT_ID"))
     except PyiCloud2SARequiredException as ex:
         if notification_script is not None:
@@ -155,10 +157,10 @@ def main(
                 smtp_no_tls,
                 notification_email,
             )
-        print(ex)
+        logger.error(ex)
         sys.exit(constants.ExitCode.EXIT_FAILED_2FA_REQUIRED.value)
     except PyiCloudFailedLoginException as ex:
-        print(ex)
+        logger.error(ex)
         sys.exit(constants.ExitCode.EXIT_FAILED_LOGIN.value)
 
     # Default album is "All Photos", so this is the same as
@@ -275,6 +277,11 @@ def main(
                     newest_created_date = created
                     newest_asset_name = path
 
+            def calculate_md5(path):
+                with open(path, 'rb') as f:
+                    data = f.read()    
+                    return hashlib.md5(data).hexdigest()
+
             if skip_videos and photo.item_type != "image":
                 logger.set_tqdm_description(f"{album}: skipping {photo.filename}, only downloading photos.")
                 return
@@ -328,7 +335,6 @@ def main(
                     return
 
             download_path = local_download_path(photo, download_size, download_dir)
-            database.DatabaseHandler().upsert_asset(album, photo)
 
             file_exists = os.path.isfile(download_path)
             if not file_exists and download_size == "original":
@@ -350,7 +356,11 @@ def main(
                     file_exists = os.path.isfile(download_path)
                 if file_exists:
                     consecutive_files_found = consecutive_files_found + 1
+#                    database.DatabaseHandler().upsert_asset(album, photo, download_path, md5)
                     logger.set_tqdm_description(f"{album}: skipping (already exists) {truncate_middle(download_path, 96)} dated {created_date}")
+                    # TODO: Check for multiple occurrences of same asset in iCloud Photos library (happened with WhatsApp)
+                    #download_result = download.download_media(icloud, photo, download_path + ".skipped." + photo.item_type_extension, download_size)
+
 
             update_newest(created_date, newest_created_date, download_path)
 
@@ -369,6 +379,8 @@ def main(
                             logger.debug(f"Setting EXIF timestamp for {download_path}: {date_str}")
                             exif_datetime.set_photo_exif(download_path, created_date.strftime("%Y:%m:%d %H:%M:%S"))
                         download.set_utime(download_path, created_date)
+                        md5 = calculate_md5(download_path)
+                        database.DatabaseHandler().upsert_asset(album, photo, download_path, md5)
 
             # Also download the live photo if present
             if not skip_live_photos:
@@ -396,6 +408,8 @@ def main(
                         if not lp_file_exists:
                             logger.set_tqdm_description(f"{album}: downloading {truncate_middle(lp_download_path, 96)} dated {created_date}")
                             download.download_media(icloud, photo, lp_download_path, lp_size)
+                            md5 = calculate_md5(lp_download_path)
+                            database.DatabaseHandler().upsert_asset(album, photo, lp_download_path, md5)
                     
                     update_newest(created_date, newest_created_date, lp_download_path)
 

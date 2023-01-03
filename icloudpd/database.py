@@ -78,7 +78,10 @@ class DatabaseHandler(Handler):
                     dimensionX INTEGER,
                     dimensionY INTEGER,
                     item_type TEXT,
-                    item_type_extenstion TEXT
+                    item_type_extension TEXT,
+                    path TEXT,
+                    md5 TEXT,
+                    album
                     )
                 """
                 )
@@ -99,9 +102,9 @@ class DatabaseHandler(Handler):
         except sql.Error as er:
             self.print_error(er)
 
-    def upsert_asset(self, album, photo):
+    def upsert_asset(self, album, photo, path, md5):
         try:
-            self.db_conn.execute("INSERT OR REPLACE INTO PhotoAsset VALUES (:1,:2,:3,:4,:5,:6,:7,:8,:9,:10)", (
+            self.db_conn.execute("INSERT OR REPLACE INTO PhotoAsset VALUES (:1,:2,:3,:4,:5,:6,:7,:8,:9,:10,:11,:12,:13)", (
                 photo.id,
                 photo.filename,
                 photo.size,
@@ -111,7 +114,10 @@ class DatabaseHandler(Handler):
                 photo.dimensions[0],
                 photo.dimensions[1],
                 photo.item_type,
-                photo.item_type_extension
+                photo.item_type_extension,
+                path,
+                md5,
+                album
                 )
             )
             self.db_conn.commit()
