@@ -401,7 +401,7 @@ def main(
                             lp_photo_size = version["size"]
                             if lp_file_size != lp_photo_size:
                                 lp_download_path = f"-{lp_photo_size}.".join(lp_download_path.rsplit(".", 1))
-                                logger.set_tqdm_description(f"deduplicated (live) {truncate_middle(lp_download_path, 96)} file size {file_size} photo size {photo_size} dated {created_date}")
+                                logger.set_tqdm_description(f"deduplicated (live) {truncate_middle(lp_download_path, 96)} file size {lp_file_size} photo size {lp_photo_size} dated {created_date}")
                                 lp_file_exists = os.path.isfile(lp_download_path)
                             if lp_file_exists:
                                 logger.set_tqdm_description(f"{album}: skipping (already exists) {truncate_middle(lp_download_path, 96)} dated {created_date}")
