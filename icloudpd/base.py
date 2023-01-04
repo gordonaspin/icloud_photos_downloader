@@ -51,6 +51,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option("-a", "--album",      help="Album to download (default: All Photos)", metavar="<album>", default="All Photos")
 @click.option("--all-albums",       help="Download all albums", is_flag=True)
 @click.option("--skip-smart-folders", help="Exclude smart folders from listing or download: All Photos, Time-lapse, Videos, Slo-mo, Bursts, Favorites, Panoramas, Screenshots, Live, Recently Deleted, Hidden", is_flag=True)
+@click.option("--skip-All-Photos", help="Exclude the smart folders 'All Photos' from listing or download", is_flag=True)
 @click.option("-l", "--list-albums",help="Lists the avaliable albums and exits", is_flag=True)
 @click.option("-s", "--sort",       help="Sort album names (default: desc)", type=click.Choice(["asc", "desc"]), default="desc")
 @click.option("--skip-videos",      help="Don't download any videos (default: Download all photos and videos)", is_flag=True)
@@ -87,6 +88,7 @@ def main(
         album,
         all_albums,
         skip_smart_folders,
+        skip_all_photos,
         list_albums,
         sort,
         skip_videos,
@@ -108,6 +110,8 @@ def main(
 ):
     """Download all iCloud photos to a local directory"""
     database.setup_database(directory)
+    db =  database.DatabaseHandler()
+
     logger = setup_logger()
     if only_print_filenames:
         logger.disabled = True
@@ -188,8 +192,9 @@ def main(
         sys.exit(constants.ExitCode.EXIT_NORMAL.value)
 
     directory = os.path.normpath(directory)
-    newest_created_date = datetime.datetime.fromtimestamp(0).astimezone(get_localzone())
-    newest_asset_name = "unknown"
+    newest_created = datetime.datetime.fromtimestamp(0).astimezone(get_localzone())
+    newest_name = "unknown"
+    logger.info(f"setting newest asset date to {newest_created} and newest asset name to {newest_name}")
 
     if date_since is not None:
         date_since = date_since.astimezone(get_localzone())
@@ -197,11 +202,12 @@ def main(
 
     if newest:
         # (filename, created)
-        newest_asset = database.DatabaseHandler().newest_asset()
+        newest_asset = db.newest_asset()
         if newest_asset is not None:
-            newest_created_date = newest_asset[1].astimezone(get_localzone())
-            date_since = newest_created_date
-            newest_asset_name = newest_asset[0]
+            newest_created = newest_asset["created"].astimezone(get_localzone())
+            date_since = newest_created
+            newest_asset = newest_asset["path"]
+            logger.info(f"setting newest asset date to {newest_created} and newest asset name to {newest_asset}")
             logger.info(f"assets older than {date_since} will be skipped (from database)")
         else:
             logger.info(f"newest asset date not found in database")
@@ -244,10 +250,9 @@ def main(
 
         plural_suffix = "" if photos_count == 1 else "s"
         video_suffix = ""
-        photos_count_str = "the first" if photos_count == 1 else photos_count
         if not skip_videos:
             video_suffix = " or video" if photos_count == 1 else " and videos"
-        logger.info(f"{album}: processing {photos_count_str} {size} photo{plural_suffix}{video_suffix} to the folder {directory}")
+        logger.info(f"{album}: processing {photos_count} {size} photo{plural_suffix}{video_suffix} to the folder {directory}")
 
         # Use only ASCII characters in progress bar
         tqdm_kwargs["ascii"] = True
@@ -265,17 +270,8 @@ def main(
         def download_photo(photo):
             """internal function for actually downloading the photos"""
 
-            nonlocal newest_created_date
-            nonlocal newest_asset_name
             nonlocal reached_date_since
             nonlocal consecutive_files_found
-
-            def update_newest(created, newest, path):
-                nonlocal newest_asset_name
-                nonlocal newest_created_date
-                if created > newest:
-                    newest_created_date = created
-                    newest_asset_name = path
 
             def calculate_md5(path):
                 with open(path, 'rb') as f:
@@ -356,13 +352,12 @@ def main(
                     file_exists = os.path.isfile(download_path)
                 if file_exists:
                     consecutive_files_found = consecutive_files_found + 1
-#                    database.DatabaseHandler().upsert_asset(album, photo, download_path, md5)
                     logger.set_tqdm_description(f"{album}: skipping (already exists) {truncate_middle(download_path, 96)} dated {created_date}")
+                    if not db.asset_exists(download_path[len(directory)+1:]):
+                        md5 = calculate_md5(download_path)
+                        logger.info(f"{album}: updating {download_path} md5 {md5}")
+                        db.upsert_asset(album, photo, download_path[len(directory)+1:], md5)
                     # TODO: Check for multiple occurrences of same asset in iCloud Photos library (happened with WhatsApp)
-                    #download_result = download.download_media(icloud, photo, download_path + ".skipped." + photo.item_type_extension, download_size)
-
-
-            update_newest(created_date, newest_created_date, download_path)
 
             if not file_exists:
                 consecutive_files_found = 0
@@ -380,7 +375,7 @@ def main(
                             exif_datetime.set_photo_exif(download_path, created_date.strftime("%Y:%m:%d %H:%M:%S"))
                         download.set_utime(download_path, created_date)
                         md5 = calculate_md5(download_path)
-                        database.DatabaseHandler().upsert_asset(album, photo, download_path, md5)
+                        db.upsert_asset(album, photo, download_path[len(directory)+1:], md5)
 
             # Also download the live photo if present
             if not skip_live_photos:
@@ -405,15 +400,16 @@ def main(
                                 lp_file_exists = os.path.isfile(lp_download_path)
                             if lp_file_exists:
                                 logger.set_tqdm_description(f"{album}: skipping (already exists) {truncate_middle(lp_download_path, 96)} dated {created_date}")
+                                if not db.asset_exists(lp_download_path[len(directory)+1:]):
+                                    md5 = calculate_md5(lp_download_path)
+                                    logger.info(f"{album}: updating {lp_download_path} md5 {md5}")
+                                    db.upsert_asset(album, photo, lp_download_path[len(directory)+1:], md5)
                         if not lp_file_exists:
                             logger.set_tqdm_description(f"{album}: downloading {truncate_middle(lp_download_path, 96)} dated {created_date}")
                             download.download_media(icloud, photo, lp_download_path, lp_size)
                             md5 = calculate_md5(lp_download_path)
-                            database.DatabaseHandler().upsert_asset(album, photo, lp_download_path, md5)
+                            db.upsert_asset(album, photo, lp_download_path[len(directory)+1:], md5)
                     
-                    update_newest(created_date, newest_created_date, lp_download_path)
-
-
         consecutive_files_found = 0
         reached_date_since = False
 
@@ -441,12 +437,27 @@ def main(
             autodelete_photos(icloud, folder_structure, directory)
             
     if all_albums == True:
+        if skip_all_photos:
+            album_titles = [album for album in album_titles if album != "All Photos"]
         if skip_smart_folders:
             album_titles = [album for album in album_titles if album not in icloud.photos.SMART_FOLDERS.keys()]
+        
+        logger.info("the following albums will be processed:")
+        for album in album_titles:
+            logger.info(f"{album}")
         
         for album in album_titles:
             download_album(album)
     else:
+        logger.info(f"{album} will be processed")
         download_album(album)
 
-    logger.info(f"Most recent asset in library is {newest_asset_name} dated {newest_created_date.astimezone().replace(tzinfo=None).strftime('%Y-%m-%d-%H:%M:%S')}")
+    duplicates = db.fetch_duplicates()
+    if duplicates:
+        for duplicate in duplicates:
+            logger.info(f"there are {duplicate['count']} duplicates with md5 {duplicate['md5']} of {duplicate['path']}")
+    else:
+        logger.info(f"there are no duplicates in {directory}")
+
+    newest_asset = db.newest_asset()
+    logger.info(f"Most recent asset in library is {newest_asset['path']} dated {newest_asset['created']}")

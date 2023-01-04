@@ -23,6 +23,7 @@ class DatabaseHandler(Handler):
     def __init__(self):
         super().__init__()
         self.db_conn = sql.connect(DatabaseHandler.db_file, detect_types=sql.PARSE_DECLTYPES | sql.PARSE_COLNAMES)
+        self.db_conn.row_factory = sql.Row
         self._createLogTable()
         self._createPhotoAssetTable()
         self._pruneLogTable()
@@ -69,7 +70,7 @@ class DatabaseHandler(Handler):
             self.db_conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS PhotoAsset (
-                    id TEXT PRIMARY KEY,
+                    id TEXT,
                     filename TEXT,
                     size TEXT,
                     created TIMESTAMP,
@@ -79,7 +80,7 @@ class DatabaseHandler(Handler):
                     dimensionY INTEGER,
                     item_type TEXT,
                     item_type_extension TEXT,
-                    path TEXT,
+                    path TEXT PRIMARY KEY,
                     md5 TEXT,
                     album
                     )
@@ -98,7 +99,14 @@ class DatabaseHandler(Handler):
 
     def newest_asset(self):
         try:
-            return self.db_conn.execute("SELECT filename, created FROM PhotoAsset ORDER BY created DESC LIMIT 1").fetchone()
+            return self.db_conn.execute("SELECT path, created FROM PhotoAsset ORDER BY created DESC LIMIT 1").fetchone()
+        except sql.Error as er:
+            self.print_error(er)
+
+    def asset_exists(self, path):
+        try:
+            row = self.db_conn.execute("select path from PhotoAsset where path = ?", (path,)).fetchone()
+            return row is not None
         except sql.Error as er:
             self.print_error(er)
 
@@ -124,6 +132,11 @@ class DatabaseHandler(Handler):
         except sql.Error as er:
             self.print_error(er)
 
+    def fetch_duplicates(self):
+        try:
+            return self.db_conn.execute("select A.md5, A.path, B.count from PhotoAsset A join (select md5, path, count(*) as count from PhotoAsset group by md5 having count(md5) > 1) B on A.md5 = B.md5 order by count, A.md5").fetchall()
+        except sql.Error as er:
+            self.print_error(er)
 
     def emit(self, record):
         try:
