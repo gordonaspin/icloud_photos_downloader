@@ -17,7 +17,6 @@ class DatabaseHandler(Handler):
 
     def __new__(cls):
         if not hasattr(cls, 'instance'):
-            print("creating DatabaseHandler singleton")
             cls.instance = super(DatabaseHandler, cls).__new__(cls)
             cls.instance.db_conn = sql.connect(DatabaseHandler.db_file, detect_types=sql.PARSE_DECLTYPES | sql.PARSE_COLNAMES)
             cls.instance.db_conn.row_factory = sql.Row
