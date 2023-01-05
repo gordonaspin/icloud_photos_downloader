@@ -219,15 +219,19 @@ def main(
             if retries > constants.DOWNLOAD_MEDIA_MAX_RETRIES:
                 logger.tqdm_write("iCloud re-authentication failed! Please try again later.")
                 raise ex
-            logger.tqdm_write(
-                "Session error, re-authenticating...",
-                logging.ERROR)
+            logger.tqdm_write("Session error, re-authenticating...", logging.ERROR)
             if retries > 1:
                 # If the first reauthentication attempt failed,
                 # start waiting a few seconds before retrying in case
                 # there are some issues with the Apple servers
                 time.sleep(constants.DOWNLOAD_MEDIA_RETRY_CONNECTION_WAIT_SECONDS * retries)
             icloud = authenticate(username, password)
+        else:
+            if retries > constants.DOWNLOAD_MEDIA_MAX_RETRIES:
+                logger.tqdm_write(f"photos_exception_handler: giving up: {ex}")
+                raise ex
+            logger.tqdm_write(f"photos_exception_handler: retrying: {ex}", logging.ERROR)
+            time.sleep(constants.DOWNLOAD_MEDIA_RETRY_CONNECTION_WAIT_SECONDS)
 
     photos.exception_handler = photos_exception_handler
 
