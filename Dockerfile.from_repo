@@ -28,7 +28,6 @@ RUN pip install --upgrade pip
 COPY --from=build /app/icloud_photos_downloader/dist/* /tmp
 COPY --from=build /app/pyicloud/dist/* /tmp
 RUN pip3 install /tmp/*.whl
-ENV PYTHONUNBUFFERED=1
 
 ARG USER_ID
 RUN adduser -D -g '' -u $USER_ID docker
