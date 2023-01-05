@@ -233,10 +233,10 @@ def main(
             logger.tqdm_write(f"photos_exception_handler: retrying: {ex}", logging.ERROR)
             time.sleep(constants.DOWNLOAD_MEDIA_RETRY_CONNECTION_WAIT_SECONDS)
 
-    photos.exception_handler = photos_exception_handler
 
     def download_album(album):
         photos = icloud.photos.albums[album]
+        photos.exception_handler = photos_exception_handler
         photos_count = len(photos)
 
         # Optional: Only download the x most recent photos.
