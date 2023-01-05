@@ -110,7 +110,7 @@ def main(
 ):
     """Download all iCloud photos to a local directory"""
     database.setup_database(directory)
-    db =  database.DatabaseHandler()
+    db = database.DatabaseHandler()
 
     logger = setup_logger()
     if only_print_filenames:
@@ -172,7 +172,7 @@ def main(
     # After 6 or 7 runs within 1h Apple blocks the API for some time. In that
     # case exit.
     try:
-        logger.debug(f"fetching library information from iCloudService...")
+        logger.info(f"fetching library information from iCloudService...")
         photos = icloud.photos.all
     except PyiCloudAPIResponseException as ex:
         # For later: come up with a nicer message to the user. For now take the
@@ -252,7 +252,7 @@ def main(
         video_suffix = ""
         if not skip_videos:
             video_suffix = " or video" if photos_count == 1 else " and videos"
-        logger.info(f"{album}: processing {photos_count} {size} photo{plural_suffix}{video_suffix} to the folder {directory}")
+        logger.info(f"{album}: processing {photos_count} {size} photo{plural_suffix}{video_suffix}")
 
         # Use only ASCII characters in progress bar
         tqdm_kwargs["ascii"] = True
@@ -348,14 +348,14 @@ def main(
                 photo_size = version["size"]
                 if file_size != photo_size:
                     download_path = f"-{photo_size}.".join(download_path.rsplit(".", 1))
-                    logger.set_tqdm_description(f"{album}: deduplicated (size) {truncate_middle(download_path, 96)} file size {file_size} photo size {photo_size} dated {created_date}")
+                    logger.set_tqdm_description(f"{album}: deduplicated (size) {truncate_middle(download_path[len(directory)+1:], 96)} file size {file_size} photo size {photo_size} dated {created_date}")
                     file_exists = os.path.isfile(download_path)
                 if file_exists:
                     consecutive_files_found = consecutive_files_found + 1
-                    logger.set_tqdm_description(f"{album}: skipping (already exists) {truncate_middle(download_path, 96)} dated {created_date}")
+                    logger.set_tqdm_description(f"{album}: skipping (already exists) {truncate_middle(download_path[len(directory)+1:], 96)} dated {created_date}")
                     if not db.asset_exists(download_path[len(directory)+1:]):
                         md5 = calculate_md5(download_path)
-                        logger.info(f"{album}: updating {download_path} md5 {md5}")
+                        logger.info(f"{album}: updating {download_path[len(directory)+1:]} md5 {md5}")
                         db.upsert_asset(album, photo, download_path[len(directory)+1:], md5)
                     # TODO: Check for multiple occurrences of same asset in iCloud Photos library (happened with WhatsApp)
 
@@ -364,14 +364,14 @@ def main(
                 if only_print_filenames:
                     print(download_path)
                 else:
-                    logger.set_tqdm_description(f"{album}: downloading {truncate_middle(download_path, 96)} dated {created_date}")
+                    logger.set_tqdm_description(f"{album}: downloading {truncate_middle(download_path[len(directory)+1:], 96)} dated {created_date}")
                     download_result = download.download_media(icloud, photo, download_path, download_size)
                     if download_result:
                         if set_exif_datetime and photo.filename.lower().endswith(
                                 (".jpg", ".jpeg")) and not exif_datetime.get_photo_exif(download_path):
                             # %Y:%m:%d looks wrong but it's the correct format
                             date_str = created_date.strftime("%Y-%m-%d %H:%M:%S%z")
-                            logger.debug(f"Setting EXIF timestamp for {download_path}: {date_str}")
+                            logger.debug(f"{album}: setting EXIF timestamp for {download_path[len(directory)+1:]}: {date_str}")
                             exif_datetime.set_photo_exif(download_path, created_date.strftime("%Y:%m:%d %H:%M:%S"))
                         download.set_utime(download_path, created_date)
                         md5 = calculate_md5(download_path)
@@ -396,16 +396,16 @@ def main(
                             lp_photo_size = version["size"]
                             if lp_file_size != lp_photo_size:
                                 lp_download_path = f"-{lp_photo_size}.".join(lp_download_path.rsplit(".", 1))
-                                logger.set_tqdm_description(f"deduplicated (live) {truncate_middle(lp_download_path, 96)} file size {lp_file_size} photo size {lp_photo_size} dated {created_date}")
+                                logger.set_tqdm_description(f"{album}: deduplicated (live) {truncate_middle(lp_download_path[len(directory)+1:], 96)} file size {lp_file_size} photo size {lp_photo_size} dated {created_date}")
                                 lp_file_exists = os.path.isfile(lp_download_path)
                             if lp_file_exists:
-                                logger.set_tqdm_description(f"{album}: skipping (already exists) {truncate_middle(lp_download_path, 96)} dated {created_date}")
+                                logger.set_tqdm_description(f"{album}: skipping (already exists) {truncate_middle(lp_download_path[len(directory)+1:], 96)} dated {created_date}")
                                 if not db.asset_exists(lp_download_path[len(directory)+1:]):
                                     md5 = calculate_md5(lp_download_path)
                                     logger.info(f"{album}: updating {lp_download_path} md5 {md5}")
                                     db.upsert_asset(album, photo, lp_download_path[len(directory)+1:], md5)
                         if not lp_file_exists:
-                            logger.set_tqdm_description(f"{album}: downloading {truncate_middle(lp_download_path, 96)} dated {created_date}")
+                            logger.set_tqdm_description(f"{album}: downloading {truncate_middle(lp_download_path[len(directory)+1:], 96)} dated {created_date}")
                             download.download_media(icloud, photo, lp_download_path, lp_size)
                             md5 = calculate_md5(lp_download_path)
                             db.upsert_asset(album, photo, lp_download_path[len(directory)+1:], md5)

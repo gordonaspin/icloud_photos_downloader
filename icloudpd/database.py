@@ -17,25 +17,24 @@ class DatabaseHandler(Handler):
 
     def __new__(cls):
         if not hasattr(cls, 'instance'):
+            print("creating DatabaseHandler singleton")
             cls.instance = super(DatabaseHandler, cls).__new__(cls)
+            cls.instance.db_conn = sql.connect(DatabaseHandler.db_file, detect_types=sql.PARSE_DECLTYPES | sql.PARSE_COLNAMES)
+            cls.instance.db_conn.row_factory = sql.Row
+            cls.instance._createLogTable()
+            cls.instance._createPhotoAssetTable()
+            cls.instance._pruneLogTable()
         return cls.instance
     
     def __init__(self):
         super().__init__()
-        self.db_conn = sql.connect(DatabaseHandler.db_file, detect_types=sql.PARSE_DECLTYPES | sql.PARSE_COLNAMES)
-        self.db_conn.row_factory = sql.Row
-        self._createLogTable()
-        self._createPhotoAssetTable()
-        self._pruneLogTable()
 
     def _pruneLogTable(self):
         try:
-            if not DatabaseHandler.is_pruned:
-                sql = "DELETE from Log"
-                self.db_conn.execute(sql)
-                self.db_conn.commit()
-                DatabaseHandler.is_pruned = True
-                self.db_conn.execute("VACUUM")
+            sql = "DELETE from Log"
+            self.db_conn.execute(sql)
+            self.db_conn.commit()
+            self.db_conn.execute("VACUUM")
         except sql.Error as er:
             self.print_error(er)
 
@@ -62,6 +61,7 @@ class DatabaseHandler(Handler):
                 """
                 )
             self.db_conn.commit()
+
         except sql.Error as er:
             self.print_error(er)
 
@@ -86,6 +86,8 @@ class DatabaseHandler(Handler):
                     )
                 """
                 )
+            self.db_conn.commit()
+            self.db_conn.execute("create index if not exists IX_PA_MD5 on PhotoAsset (md5)")
             self.db_conn.commit()
         except sql.Error as er:
             self.print_error(er)
