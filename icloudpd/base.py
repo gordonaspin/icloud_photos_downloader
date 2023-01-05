@@ -60,6 +60,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option("--auto-delete",      help='Scans the "Recently Deleted" folder and deletes any files found in there. (If you restore the photo in iCloud, it will be downloaded again.)', is_flag=True)
 @click.option("--only-print-filenames",help="Only prints the filenames of all files that will be downloaded (not including files that are already downloaded). (Does not download or delete any files.)", is_flag=True)
 @click.option("--folder-structure", help="Folder structure (default: {:%Y/%m/%d}). If set to 'none' all photos will just be placed into the download directory, if set to 'album' photos will be placed in a folder named as the album into the download directory", metavar="<folder_structure>", default="{:%Y/%m/%d}",)
+@click.option("--list-duplicates",  help="List files that are duplicates by the file content md5 hash", is_flag=True)
 @click.option("--set-exif-datetime",help="Write the DateTimeOriginal exif tag from file creation date, if it doesn't exist.", is_flag=True)
 @click.option("--smtp-username",    help="Your SMTP username, for sending email notifications when two-step authentication expires.", metavar="<smtp_username>")
 @click.option("--smtp-password",    help="Your SMTP password, for sending email notifications when two-step authentication expires.", metavar="<smtp_password>")
@@ -97,6 +98,7 @@ def main(
         auto_delete,
         only_print_filenames,
         folder_structure,
+        list_duplicates,
         set_exif_datetime,
         smtp_username,
         smtp_password,
@@ -125,7 +127,40 @@ def main(
             logger.setLevel(logging.INFO)
         elif log_level == "error":
             logger.setLevel(logging.ERROR)
-            
+
+    logger.info(f"directory: {directory}")
+    logger.info(f"username: {username}")
+    logger.info(f"cookie_directory: {cookie_directory}")
+    logger.info(f"size: {size}")
+    logger.info(f"live_photo_size {live_photo_size}")
+    logger.info(f"recent: {recent}")
+    logger.info(f"date_since: {date_since}")
+    logger.info(f"newest: {newest}")
+    logger.info(f"until_found: {until_found}")
+    logger.info(f"album: {album}")
+    logger.info(f"all_albums: {all_albums}")
+    logger.info(f"skip_smart_folders: {skip_smart_folders}")
+    logger.info(f"skip_all_photos: {skip_all_photos}")
+    logger.info(f"list_albums: {list_albums}")
+    logger.info(f"sort: {sort}")
+    logger.info(f"skip_videos: {skip_videos}")
+    logger.info(f"skip_live_photos: {skip_live_photos}")
+    logger.info(f"force_size: {force_size}")
+    logger.info(f"auto_delete: {auto_delete}")
+    logger.info(f"only_print_filenames: {only_print_filenames}")
+    logger.info(f"folder_structure: {folder_structure}")
+    logger.info(f"list_duplicates: {list_duplicates}")
+    logger.info(f"set_exif_datetime: {set_exif_datetime}")
+    logger.info(f"smtp_username: {smtp_username}")
+    logger.info(f"smtp_password: {smtp_password}")
+    logger.info(f"smtp_host: {smtp_host}")
+    logger.info(f"smtp_port: {smtp_port}")
+    logger.info(f"smtp_no_tls: {smtp_no_tls}")
+    logger.info(f"notification_email: {notification_email}")
+    logger.info(f"log_level: {log_level}")
+    logger.info(f"no_progress_bar: {no_progress_bar}")
+    logger.info(f"notification_script: {notification_script}")
+        
     # check required directory param only if not list albums
     if not list_albums and not directory:
         print('--directory or --list-albums are required')
@@ -456,12 +491,13 @@ def main(
         logger.info(f"{album} will be processed")
         download_album(album)
 
-    duplicates = db.fetch_duplicates()
-    if duplicates:
-        for duplicate in duplicates:
-            logger.info(f"there are {duplicate['count']} duplicates with md5 {duplicate['md5']} of {duplicate['path']}")
-    else:
-        logger.info(f"there are no duplicates in {directory}")
+    if list_duplicates:
+        duplicates = db.fetch_duplicates()
+        if duplicates:
+            for duplicate in duplicates:
+                logger.info(f"there are {duplicate['count']} duplicates with md5 {duplicate['md5']} of {duplicate['path']}")
+        else:
+            logger.info(f"there are no duplicates in {directory}")
 
     newest_asset = db.newest_asset()
     logger.info(f"Most recent asset in library is {newest_asset['path']} dated {newest_asset['created']}")
