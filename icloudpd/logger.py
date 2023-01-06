@@ -43,8 +43,6 @@ def setup_logger():
     for handler in logger.handlers:
         if handler.name == "stdoutLogger":
             has_stdout_handler = True
-        if handler.name == "databaseLogger":
-            has_database_handler = True
 
     formatter = logging.Formatter(
         fmt="%(asctime)s %(levelname)-8s %(message)s",
@@ -57,15 +55,33 @@ def setup_logger():
         logger.addHandler(handler)
         pyicloud_logger.addHandler(handler)
 
+    pyicloud_logger.disabled = logger.disabled
+    pyicloud_logger.setLevel(logger.level)
+
+    return logger
+
+def setup_database_logger():
+    """Set up logger and add stdout handler"""
+    logging.setLoggerClass(IPDLogger)
+    logger = logging.getLogger("icloudpd")
+    pyicloud_logger = logging.getLogger('pyicloud')
+
+    has_database_handler = False
+
+    for handler in logger.handlers:
+        if handler.name == "databaseLogger":
+            has_database_handler = True
+
+    formatter = logging.Formatter(
+        fmt="%(asctime)s %(levelname)-8s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S")
+
     if not has_database_handler:
         handler = DatabaseHandler()
         handler.setFormatter(formatter)
         handler.name = "databaseLogger"
         logger.addHandler(handler)
         pyicloud_logger.addHandler(handler)
-
-    pyicloud_logger.disabled = logger.disabled
-    pyicloud_logger.setLevel(logger.level)
 
     return logger
 

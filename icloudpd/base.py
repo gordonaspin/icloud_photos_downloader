@@ -30,6 +30,7 @@ from icloudpd.authentication import authenticate
 from icloudpd.autodelete import autodelete_photos
 from icloudpd.email_notifications import send_2sa_notification
 from icloudpd.logger import setup_logger
+from icloudpd.logger import setup_database_logger
 from icloudpd.paths import build_download_dir, local_download_path
 from icloudpd.string_helpers import truncate_middle
 import icloudpd.database as database
@@ -111,11 +112,14 @@ def main(
         notification_script,         # pylint: disable=W0613
 ):
     """Download all iCloud photos to a local directory"""
-    database.setup_database(directory)
-    db = database.DatabaseHandler()
-
     logger = setup_logger()
-    if only_print_filenames:
+
+    if directory:
+        database.setup_database(directory)
+        setup_database_logger()
+        db = database.DatabaseHandler()
+
+    if only_print_filenames or list_albums:
         logger.disabled = True
     else:
         # Need to make sure disabled is reset to the correct value,
@@ -270,42 +274,6 @@ def main(
 
 
     def download_album(album):
-        photos = icloud.photos.albums[album]
-        photos.exception_handler = photos_exception_handler
-        photos_count = len(photos)
-
-        # Optional: Only download the x most recent photos.
-        if recent is not None:
-            photos_count = recent
-            photos = itertools.islice(photos, recent)
-
-        tqdm_kwargs = {"total": photos_count}
-
-        if until_found is not None:
-            del tqdm_kwargs["total"]
-            photos_count = "???"
-            # ensure photos iterator doesn't have a known length
-            photos = (p for p in photos)
-
-        plural_suffix = "" if photos_count == 1 else "s"
-        video_suffix = ""
-        if not skip_videos:
-            video_suffix = " or video" if photos_count == 1 else " and videos"
-        logger.info(f"{album}: processing {photos_count} {size} photo{plural_suffix}{video_suffix}")
-
-        # Use only ASCII characters in progress bar
-        tqdm_kwargs["ascii"] = True
-
-        # Skip the one-line progress bar if we're only printing the filenames,
-        # or if the progress bar is explicity disabled,
-        # or if this is not a terminal (e.g. cron or piping output to file)
-        if not os.environ.get("FORCE_TQDM") and (only_print_filenames or no_progress_bar or not sys.stdout.isatty()):
-            photos_enumerator = photos
-            logger.set_tqdm(None)
-        else:
-            photos_enumerator = tqdm(photos, **tqdm_kwargs)
-            logger.set_tqdm(photos_enumerator)
-
         def download_photo(photo):
             """internal function for actually downloading the photos"""
 
@@ -449,6 +417,42 @@ def main(
                             md5 = calculate_md5(lp_download_path)
                             db.upsert_asset(album, photo, lp_download_path[len(directory)+1:], md5)
                     
+        photos = icloud.photos.albums[album]
+        photos.exception_handler = photos_exception_handler
+        photos_count = len(photos)
+
+        # Optional: Only download the x most recent photos.
+        if recent is not None:
+            photos_count = recent
+            photos = itertools.islice(photos, recent)
+
+        tqdm_kwargs = {"total": photos_count}
+
+        if until_found is not None:
+            del tqdm_kwargs["total"]
+            photos_count = "???"
+            # ensure photos iterator doesn't have a known length
+            photos = (p for p in photos)
+
+        plural_suffix = "" if photos_count == 1 else "s"
+        video_suffix = ""
+        if not skip_videos:
+            video_suffix = " or video" if photos_count == 1 else " and videos"
+        logger.info(f"{album}: processing {photos_count} {size} photo{plural_suffix}{video_suffix}")
+
+        # Use only ASCII characters in progress bar
+        tqdm_kwargs["ascii"] = True
+
+        # Skip the one-line progress bar if we're only printing the filenames,
+        # or if the progress bar is explicity disabled,
+        # or if this is not a terminal (e.g. cron or piping output to file)
+        if not os.environ.get("FORCE_TQDM") and (only_print_filenames or no_progress_bar or not sys.stdout.isatty()):
+            photos_enumerator = photos
+            logger.set_tqdm(None)
+        else:
+            photos_enumerator = tqdm(photos, **tqdm_kwargs)
+            logger.set_tqdm(photos_enumerator)
+
         consecutive_files_found = 0
         reached_date_since = False
 
