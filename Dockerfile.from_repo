@@ -32,3 +32,4 @@ RUN pip3 install /tmp/*.whl
 ARG USER_ID
 RUN adduser -D -g '' -u $USER_ID docker
 USER docker
+ENV TZ=${TZ}

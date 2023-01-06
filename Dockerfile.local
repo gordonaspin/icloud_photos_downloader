@@ -23,6 +23,8 @@ RUN set -xe \
   && icloud -h | head -n1 \
   && date
 
+ENV TZ=${TZ}
+
 ARG USER_ID
 RUN adduser -D -g '' -u $USER_ID docker
 USER docker
