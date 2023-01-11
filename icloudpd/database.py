@@ -1,8 +1,9 @@
-from logging import getLogger, StreamHandler, Formatter, Handler, NOTSET, getLevelName
-from datetime import datetime
 import sqlite3 as sql
-import os, sys
+import sys
 import traceback
+from datetime import datetime
+from logging import Handler
+
 
 # Need to adapt inside sqlite3 to make timestamps without .mmmmmm work
 def adapt_datetime(val):
@@ -135,7 +136,7 @@ class DatabaseHandler(Handler):
 
     def fetch_duplicates(self):
         try:
-            return self.db_conn.execute("select A.md5, A.path, B.count from PhotoAsset A join (select md5, path, count(*) as count from PhotoAsset group by md5 having count(md5) > 1) B on A.md5 = B.md5 order by count, A.md5").fetchall()
+            return self.db_conn.execute("select A.md5, A.path, A.size, B.count from PhotoAsset A join (select md5, count(*) as count, size from PhotoAsset group by md5 having count(md5) > 1) B on A.md5 = B.md5 order by CAST(A.size as integer), A.path").fetchall()
         except sql.Error as er:
             self.print_error(er)
 

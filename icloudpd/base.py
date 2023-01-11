@@ -40,7 +40,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.command(context_settings=CONTEXT_SETTINGS, options_metavar="<options>")
 # @click.argument(
 @click.option("-d", "--directory",     help="Local directory that should be used for download", type=click.Path(exists=True), metavar="<directory>")
-@click.option("-u", "--username",      help="Your iCloud username or email address", metavar="<username>", prompt="iCloud username/email")
+@click.option("-u", "--username",      help="Your iCloud username or email address", metavar="<username>")
 @click.option("-p", "--password",      help="Your iCloud password (default: use PyiCloud keyring or prompt for password)", metavar="<password>")
 @click.option("--cookie-directory",    help="Directory to store cookies for authentication (default: ~/.pyicloud)", metavar="</cookie/directory>", default="~/.pyicloud")
 @click.option("--size",                help="Image size to download (default: original)", type=click.Choice(["original", "medium", "thumb"]), default="original")
@@ -170,6 +170,38 @@ def main(
         print('--directory or --list-albums are required')
         sys.exit(constants.ExitCode.EXIT_FAILED_MISSING_COMMAND.value)
 
+    def print_duplicates(duplicates):
+        if duplicates:
+            duplicate_iter = iter(duplicates)
+            size = 0
+            while True:
+                try:
+                    duplicate = next(duplicate_iter)
+                    logger.info(f"there are {duplicate['count']} duplicates with md5 {duplicate['md5']} and size {duplicate['size']}:")
+                    count = duplicate['count']
+                    for i in range(0, count):
+                        logger.info(f"duplicate:{duplicate['md5']}: {duplicate['path']}")
+                        if i < count - 1:
+                            size = size + int(duplicate['size'])
+                            duplicate = next(duplicate_iter)
+
+                except StopIteration:
+                    if size > 1024*1024*1024:
+                        logger.info(f"{size/(1024*1024*1024):.1f} GB could be reclaimed")
+                    elif size > 1024*1024:
+                        logger.info(f"{size/(1024*1024):.1f} MB could be reclaimed")
+                    elif size > 1024:
+                        logger.info(f"{size/(1024):.1f} KB could be reclaimed")
+                    else:
+                        logger.info(f"{size} bytes could be reclaimed")
+                    break
+        else:
+            logger.info("there are no duplicates")
+            
+    if not username and directory and list_duplicates:
+        print_duplicates(db.fetch_duplicates())
+        sys.exit(constants.ExitCode.EXIT_NORMAL.value)
+            
     raise_authorization_exception = (
         smtp_username is not None
         or notification_email is not None
@@ -496,12 +528,8 @@ def main(
         download_album(album)
 
     if list_duplicates:
-        duplicates = db.fetch_duplicates()
-        if duplicates:
-            for duplicate in duplicates:
-                logger.info(f"there are {duplicate['count']} duplicates with md5 {duplicate['md5']} of {duplicate['path']}")
-        else:
-            logger.info(f"there are no duplicates in {directory}")
+        print_duplicates(db.fetch_duplicates())
+
 
     newest_asset = db.newest_asset()
     logger.info(f"Most recent asset in library is {newest_asset['path']} dated {newest_asset['created']}")
