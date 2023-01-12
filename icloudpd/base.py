@@ -513,8 +513,10 @@ def main(
             
     if all_albums == True:
         if skip_all_photos:
+            logger.info("removing All Photos from the list of albums to process")
             album_titles = [album for album in album_titles if album != "All Photos"]
         if skip_smart_folders:
+            logger.info("removing smart folders from the list of albums to process")
             album_titles = [album for album in album_titles if album not in icloud.photos.SMART_FOLDERS.keys()]
         
         logger.info("the following albums will be processed:")
