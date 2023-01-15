@@ -112,6 +112,7 @@ def main(
         notification_script,         # pylint: disable=W0613
 ):
     """Download all iCloud photos to a local directory"""
+    start = datetime.datetime.now()
     logger = setup_logger()
 
     if directory:
@@ -535,3 +536,4 @@ def main(
 
     newest_asset = db.newest_asset()
     logger.info(f"Most recent asset in library is {newest_asset['path']} dated {newest_asset['created']}")
+    logger.info(f"completed in {datetime.datetime.now() - start}")
