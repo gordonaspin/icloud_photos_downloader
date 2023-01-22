@@ -17,6 +17,7 @@ echo "Current icloudpd version: ${ICLOUDPD_VERSION}"
 echo "Current pyicloud version: ${PYICLOUD_VERSION}"
 
 docker build \
+  --platform linux/amd64 \
   --progress plain \
   --no-cache \
   -t "gordonaspin/icloudpd:${ICLOUDPD_VERSION}-local" \

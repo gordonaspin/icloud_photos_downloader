@@ -72,6 +72,8 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option("--notification-script", help="Runs an external script when two factor authentication expires. (path required: /path/to/my/script.sh)", type=click.Path(), )
 @click.option("--log-level",           help="Log level (default: debug)", type=click.Choice(["debug", "info", "error"]), default="debug")
 @click.option("--no-progress-bar",     help="Disables the one-line progress bar and prints log messages on separate lines (Progress bar is disabled by default if there is no tty attached)", is_flag=True)
+@click.option("--unverified-https",    help="Overrides default https context with unverified https context", is_flag=True)
+
 @click.version_option()
 # pylint: disable-msg=too-many-arguments,too-many-statements
 # pylint: disable-msg=too-many-branches,too-many-locals
@@ -110,6 +112,7 @@ def main(
         log_level,
         no_progress_bar,
         notification_script,         # pylint: disable=W0613
+        unverified_https,
 ):
     """Download all iCloud photos to a local directory"""
     start = datetime.datetime.now()
@@ -165,6 +168,7 @@ def main(
     logger.info(f"log_level: {log_level}")
     logger.info(f"no_progress_bar: {no_progress_bar}")
     logger.info(f"notification_script: {notification_script}")
+    logger.info(f"unverified_https: {unverified_https}")
         
     # check required directory param only if not list albums
     if not list_albums and not directory:
@@ -209,6 +213,20 @@ def main(
         or notification_script is not None
         or not sys.stdout.isatty()
     )
+    if unverified_https:
+        logger.info("attemping to use unverified https")
+        import ssl
+        try:
+            _create_unverified_https_context = ssl._create_unverified_context
+        except AttributeError:
+            # Legacy Python that doesn't verify HTTPS certificates by default
+            logger.info("legacy python uses unverified https by default")
+            pass
+        else:
+            # Handle target environment that doesn't support HTTPS verification
+            logger.info("using unverified https")
+            ssl._create_default_https_context = _create_unverified_https_context
+
 
     try:
         logger.debug("connecting to iCloudService...")
