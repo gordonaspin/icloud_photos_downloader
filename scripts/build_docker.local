@@ -17,7 +17,7 @@ echo "Current icloudpd version: ${ICLOUDPD_VERSION}"
 echo "Current pyicloud version: ${PYICLOUD_VERSION}"
 
 docker build \
-  --platform linux/amd64 \
+  --platform linux/arm64 \
   --progress plain \
   --no-cache \
   -t "gordonaspin/icloudpd:${ICLOUDPD_VERSION}-local" \
@@ -27,5 +27,4 @@ docker build \
   --build-arg USER_ID=$(id -u) \
   "$ROOT_DIR"
 
-docker tag "gordonaspin/icloudpd:${ICLOUDPD_VERSION}-local" "gordonaspin/icloudpd:${ICLOUDPD_VERSION}-local-alpine"
 docker tag "gordonaspin/icloudpd:${ICLOUDPD_VERSION}-local" "gordonaspin/icloudpd:local-latest"

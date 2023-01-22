@@ -15,7 +15,8 @@ import hashlib
 import click
 import urllib3
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from urllib3.exceptions import InsecureRequestWarning
+urllib3.disable_warnings(category=InsecureRequestWarning)
 
 from pyicloud.exceptions import (PyiCloud2SARequiredException,
                                  PyiCloudAPIResponseException,
@@ -213,20 +214,6 @@ def main(
         or notification_script is not None
         or not sys.stdout.isatty()
     )
-    if unverified_https:
-        logger.info("attemping to use unverified https")
-        import ssl
-        try:
-            _create_unverified_https_context = ssl._create_unverified_context
-        except AttributeError:
-            # Legacy Python that doesn't verify HTTPS certificates by default
-            logger.info("legacy python uses unverified https by default")
-            pass
-        else:
-            # Handle target environment that doesn't support HTTPS verification
-            logger.info("using unverified https")
-            ssl._create_default_https_context = _create_unverified_https_context
-
 
     try:
         logger.debug("connecting to iCloudService...")
@@ -236,7 +223,8 @@ def main(
             password,
             cookie_directory,
             raise_authorization_exception,
-            client_id=os.environ.get("CLIENT_ID"))
+            client_id=os.environ.get("CLIENT_ID"),
+            unverified_https=unverified_https)
     except PyiCloud2SARequiredException as ex:
         if notification_script is not None:
             logger.debug(f"executing notification script {notification_script}")
