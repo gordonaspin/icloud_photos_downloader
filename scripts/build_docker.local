@@ -16,8 +16,18 @@ cp $ROOT_DIR/../pyicloud/dist/*.whl dist/
 echo "Current icloudpd version: ${ICLOUDPD_VERSION}"
 echo "Current pyicloud version: ${PYICLOUD_VERSION}"
 
+os=$(uname -o)
+echo ${os}
+if [[ "${os}" == "GNU/Linux" ]]
+then
+  platform="linux/x86_64"
+elif [[ "${os}" == "Darwin" ]]
+then
+  platform="linux/arm64"
+fi
+
 docker build \
-  --platform linux/arm64 \
+  --platform ${platform} \
   --progress plain \
   --no-cache \
   -t "gordonaspin/icloudpd:${ICLOUDPD_VERSION}-local" \
