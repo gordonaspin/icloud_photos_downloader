@@ -27,3 +27,4 @@ ARG USER_ID
 RUN adduser --disabled-password --gecos '' -uid $USER_ID docker
 USER docker
 ENV TZ=${TZ}
+ENTRYPOINT [ "icloudpd", "-d", "/photos", "--cookie-directory", "/cookies" ]
