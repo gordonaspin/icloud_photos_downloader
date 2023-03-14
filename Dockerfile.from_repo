@@ -1,10 +1,10 @@
 # This image is mainly used for development and testing
 
-FROM python:latest
+FROM python:3.10-alpine
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y tzdata bash sqlite3
+RUN apk add tzdata bash git
 RUN python -m pip install --upgrade pip
 RUN git clone https://github.com/gordonaspin/icloud_photos_downloader.git
 RUN git clone https://github.com/gordonaspin/pyicloud.git
@@ -24,7 +24,7 @@ RUN pip3 install /app/icloud_photos_downloader/dist/*.whl
 RUN pip3 install /app/pyicloud/dist/*.whl
 
 ARG USER_ID
-RUN adduser --disabled-password --gecos '' -uid $USER_ID docker
+RUN adduser --disabled-password --gecos '' --uid $USER_ID docker
 USER docker
 ENV TZ=${TZ}
 ENTRYPOINT [ "icloudpd", "-d", "/photos", "--cookie-directory", "/cookies" ]
