@@ -112,6 +112,13 @@ class DatabaseHandler(Handler):
         except sql.Error as er:
             self.print_error(er)
 
+    def get_asset_md5(self, path):
+        try:
+            return self.db_conn.execute("select md5 from PhotoAsset where path = ?", (path,)).fetchone()['md5']
+        except sql.Error as er:
+            self.print_error(er)
+
+
     def upsert_asset(self, album, photo, path, md5):
         try:
             self.db_conn.execute("INSERT OR REPLACE INTO PhotoAsset VALUES (:1,:2,:3,:4,:5,:6,:7,:8,:9,:10,:11,:12,:13)", (
@@ -131,6 +138,22 @@ class DatabaseHandler(Handler):
                 )
             )
             self.db_conn.commit()
+            d = {}
+            d['id'] = photo.id
+            d['filename'] = photo.filename
+            d['size'] = photo.size
+            d['created'] = photo.created.isoformat()
+            d['asset_date'] = photo.asset_date.isoformat()
+            d['added_date'] = photo.added_date.isoformat()
+            d['x'] = photo.dimensions[0]
+            d['y'] = photo.dimensions[1]
+            d['item_type'] = photo.item_type
+            d['item_type_extension'] = photo.item_type_extension
+            d['path'] = path
+            d['md5'] = md5
+            d['album'] = album
+            return d
+        
         except sql.Error as er:
             self.print_error(er)
 

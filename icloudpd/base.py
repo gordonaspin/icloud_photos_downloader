@@ -63,6 +63,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option("--only-print-filenames",help="Only prints the filenames of all files that will be downloaded (not including files that are already downloaded). (Does not download or delete any files.)", is_flag=True)
 @click.option("--folder-structure",    help="Folder structure (default: {:%Y/%m/%d}). If set to 'none' all photos will just be placed into the download directory, if set to 'album' photos will be placed in a folder named as the album into the download directory", metavar="<folder_structure>", default="{:%Y/%m/%d}",)
 @click.option("--list-duplicates",     help="List files that are duplicates by the file content md5 hash", is_flag=True)
+@click.option("--create-json-listing", help="Creates a catalog.json file listing of the albums/assets processed in folder specified by directory option", is_flag=True)
 @click.option("--set-exif-datetime",   help="Write the DateTimeOriginal exif tag from file creation date, if it doesn't exist.", is_flag=True)
 @click.option("--smtp-username",       help="Your SMTP username, for sending email notifications when two-step authentication expires.", metavar="<smtp_username>")
 @click.option("--smtp-password",       help="Your SMTP password, for sending email notifications when two-step authentication expires.", metavar="<smtp_password>")
@@ -103,6 +104,7 @@ def main(
         only_print_filenames,
         folder_structure,
         list_duplicates,
+        create_json_listing,
         set_exif_datetime,
         smtp_username,
         smtp_password,
@@ -402,7 +404,10 @@ def main(
                     if not db.asset_exists(download_path[len(directory)+1:]):
                         md5 = calculate_md5(download_path)
                         logger.info(f"{album}: updating {download_path[len(directory)+1:]} md5 {md5}")
-                        db.upsert_asset(album, photo, download_path[len(directory)+1:], md5)
+                    else:
+                        md5 = db.get_asset_md5(download_path[len(directory)+1:])
+                    photo_metadata = db.upsert_asset(album, photo, download_path[len(directory)+1:], md5)
+                    photo_metadata['file_size'] = os.stat(download_path).st_size
                     # TODO: Check for multiple occurrences of same asset in iCloud Photos library (happened with WhatsApp)
 
             if not file_exists:
@@ -421,7 +426,9 @@ def main(
                             exif_datetime.set_photo_exif(download_path, created_date.strftime("%Y:%m:%d %H:%M:%S"))
                         download.set_utime(download_path, created_date)
                         md5 = calculate_md5(download_path)
-                        db.upsert_asset(album, photo, download_path[len(directory)+1:], md5)
+                        photo_metadata = db.upsert_asset(album, photo, download_path[len(directory)+1:], md5)
+                        photo_metadata['file_size'] = os.stat(download_path).st_size
+
 
             # Also download the live photo if present
             if not skip_live_photos:
@@ -449,13 +456,22 @@ def main(
                                 if not db.asset_exists(lp_download_path[len(directory)+1:]):
                                     md5 = calculate_md5(lp_download_path)
                                     logger.info(f"{album}: updating {lp_download_path} md5 {md5}")
-                                    db.upsert_asset(album, photo, lp_download_path[len(directory)+1:], md5)
+                                else:
+                                    md5 = db.get_asset_md5(lp_download_path[len(directory)+1:])
+                                photo_metadata = db.upsert_asset(album, photo, lp_download_path[len(directory)+1:], md5)
+                                photo_metadata['file_size'] = os.stat(lp_download_path).st_size
                         if not lp_file_exists:
                             logger.set_tqdm_description(f"{album}: downloading {truncate_middle(lp_download_path[len(directory)+1:], 96)} dated {created_date}")
                             download.download_media(icloud, photo, lp_download_path, lp_size)
                             md5 = calculate_md5(lp_download_path)
-                            db.upsert_asset(album, photo, lp_download_path[len(directory)+1:], md5)
+                            photo_metadata = db.upsert_asset(album, photo, lp_download_path[len(directory)+1:], md5)
+                            photo_metadata['file_size'] = os.stat(lp_download_path).st_size
+
+            return photo_metadata
                     
+        amd = {}
+        amd['album_name'] = album
+        amd['assets'] = []
         photos = icloud.photos.albums[album]
         photos.exception_handler = photos_exception_handler
         photos_count = len(photos)
@@ -505,7 +521,8 @@ def main(
                         logger.tqdm_write(f"{album}: found {until_found} consecutive previously downloaded photos")
                     break
                 photo = next(photos_iterator)
-                download_photo(photo)
+                pmd = download_photo(photo)
+                amd['assets'].append(pmd)
             except StopIteration:
                 break
 
@@ -517,7 +534,13 @@ def main(
 
         if auto_delete:
             autodelete_photos(icloud, folder_structure, directory)
+
+        return amd
             
+    cmd = {}
+    cmd['icloud_username'] = username
+    cmd['directory'] = directory
+    cmd['albums'] = []
     if all_albums == True:
         if skip_all_photos:
             logger.info("removing All Photos from the list of albums to process")
@@ -525,16 +548,22 @@ def main(
         if skip_smart_folders:
             logger.info("removing smart folders from the list of albums to process")
             album_titles = [album for album in album_titles if album not in icloud.photos.SMART_FOLDERS.keys()]
-        
-        logger.info("the following albums will be processed:")
-        for album in album_titles:
-            logger.info(f"{album}")
-        
-        for album in album_titles:
-            download_album(album)
     else:
-        logger.info(f"{album} will be processed")
-        download_album(album)
+        album_titles = [album]
+
+    logger.info("the following albums will be processed:")
+    for album in album_titles:
+        logger.info(f"{album}")      
+
+    for album in album_titles:
+        amd = download_album(album)
+        cmd['albums'].append(amd)
+
+    if create_json_listing:
+        json_file_path = directory + "/" + "catalog.json"
+        logger.info(f"writing json listing to {json_file_path}")
+        with open(json_file_path, "w") as jsonfile:
+            jsonfile.write(json.dumps(cmd, indent=4))
 
     if list_duplicates:
         print_duplicates(db.fetch_duplicates())

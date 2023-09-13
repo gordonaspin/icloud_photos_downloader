@@ -58,6 +58,8 @@ Options:
                                   download: All Photos, Time-lapse, Videos,
                                   Slo-mo, Bursts, Favorites, Panoramas,
                                   Screenshots, Live, Recently Deleted, Hidden
+  --skip-All-Photos               Exclude the smart folders 'All Photos' from
+                                  listing or download
   -l, --list-albums               Lists the avaliable albums and exits
   -s, --sort [asc|desc]           Sort album names (default: desc)
   --skip-videos                   Don't download any videos (default: Download
@@ -81,6 +83,11 @@ Options:
                                   'album' photos will be placed in a folder
                                   named as the album into the download
                                   directory
+  --list-duplicates               List files that are duplicates by the file
+                                  content md5 hash
+  --create-json-listing           Creates a catalog.json file listing of the
+                                  albums/assets processed in folder specified
+                                  by directory option
   --set-exif-datetime             Write the DateTimeOriginal exif tag from
                                   file creation date, if it doesn't exist.
   --smtp-username <smtp_username>
@@ -109,6 +116,9 @@ Options:
                                   prints log messages on separate lines
                                   (Progress bar is disabled by default if
                                   there is no tty attached)
+  --unverified-https              Overrides default https context with
+                                  unverified https context
+  --version                       Show the version and exit.
   -h, --help                      Show this message and exit.
 ```
 
