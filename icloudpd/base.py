@@ -72,7 +72,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option("--smtp-no-tls",         help="Pass this flag to disable TLS for SMTP (TLS is required for Gmail)", metavar="<smtp_no_tls>", is_flag=True)
 @click.option("--notification-email",  help="Email address where you would like to receive email notifications. Default: SMTP username", metavar="<notification_email>")
 @click.option("--notification-script", help="Runs an external script when two factor authentication expires. (path required: /path/to/my/script.sh)", type=click.Path(), )
-@click.option("--log-level",           help="Log level (default: debug)", type=click.Choice(["debug", "info", "error"]), default="debug")
+@click.option("--log-level",           help="Log level (default: info)", type=click.Choice(["debug", "info", "error"]), default="info")
 @click.option("--no-progress-bar",     help="Disables the one-line progress bar and prints log messages on separate lines (Progress bar is disabled by default if there is no tty attached)", is_flag=True)
 @click.option("--unverified-https",    help="Overrides default https context with unverified https context", is_flag=True)
 
@@ -127,7 +127,8 @@ def main(
         db = database.DatabaseHandler()
 
     if only_print_filenames or list_albums:
-        logger.disabled = True
+        if not log_level == "debug":
+            logger.disabled = True
     else:
         # Need to make sure disabled is reset to the correct value,
         # because the logger instance is shared between tests.
@@ -325,6 +326,23 @@ def main(
                 with open(path, 'rb') as f:
                     data = f.read()    
                     return hashlib.md5(data).hexdigest()
+                
+            def get_photo_metadata(photo, album, path, md5):
+                d = {}
+                d['id'] = photo.id
+                d['filename'] = photo.filename
+                d['size'] = photo.size
+                d['created'] = photo.created.isoformat()
+                d['asset_date'] = photo.asset_date.isoformat()
+                d['added_date'] = photo.added_date.isoformat()
+                d['x'] = photo.dimensions[0]
+                d['y'] = photo.dimensions[1]
+                d['item_type'] = photo.item_type
+                d['item_type_extension'] = photo.item_type_extension
+                d['path'] = path
+                d['md5'] = md5
+                d['album'] = album
+                return d
 
             if skip_videos and photo.item_type != "image":
                 logger.set_tqdm_description(f"{album}: skipping {photo.filename}, only downloading photos.")
@@ -414,6 +432,7 @@ def main(
                 consecutive_files_found = 0
                 if only_print_filenames:
                     print(download_path)
+                    photo_metadata = get_photo_metadata(photo, album, download_path[len(directory)+1:], -1)
                 else:
                     logger.set_tqdm_description(f"{album}: downloading {truncate_middle(download_path[len(directory)+1:], 96)} dated {created_date}")
                     download_result = download.download_media(icloud, photo, download_path, download_size)
@@ -443,6 +462,7 @@ def main(
                     lp_file_exists = os.path.isfile(lp_download_path)
                     if only_print_filenames and not lp_file_exists:
                         print(lp_download_path)
+                        photo_metadata = get_photo_metadata(photo, album, lp_download_path[len(directory)+1:], -1)
                     else:
                         if lp_file_exists:
                             lp_file_size = os.stat(lp_download_path).st_size
@@ -526,8 +546,8 @@ def main(
             except StopIteration:
                 break
 
-        if only_print_filenames:
-            sys.exit(constants.ExitCode.EXIT_NORMAL.value)
+        #if only_print_filenames:
+        #    sys.exit(constants.ExitCode.EXIT_NORMAL.value)
 
         if not reached_date_since:
             logger.info(f"{album}: processed all assets")
