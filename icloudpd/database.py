@@ -88,6 +88,7 @@ class DatabaseHandler(Handler):
                 )
             self.db_conn.commit()
             self.db_conn.execute("create index if not exists IX_PA_MD5 on PhotoAsset (md5)")
+            self.db_conn.execute("create index if not exists IX_PA_FILENAME on PhotoAsset (md5)")
             self.db_conn.commit()
         except sql.Error as er:
             self.print_error(er)
