@@ -1,3 +1,4 @@
+build
 click>=6.7
 python_dateutil==2.8.2
 requests>=2.20.0
