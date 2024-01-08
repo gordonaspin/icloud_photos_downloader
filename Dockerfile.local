@@ -1,4 +1,4 @@
-FROM python:3.10-alpine
+FROM python:3.12-alpine
 
 #RUN set -xe
 RUN apk add tzdata bash vim
@@ -17,8 +17,8 @@ ARG PYICLOUD_VERSION
 COPY dist/* /tmp/
 RUN set -xe \
   && pip install wheel==0.35.1 \
-  && pip install /tmp/pyicloud-${PYICLOUD_VERSION}-py2.py3-none-any.whl \
-  && pip install /tmp/icloudpd-${ICLOUDPD_VERSION}-py2.py3-none-any.whl \
+  && pip install /tmp/pyicloud-${PYICLOUD_VERSION}-py3-none-any.whl \
+  && pip install /tmp/icloudpd-${ICLOUDPD_VERSION}-py3-none-any.whl \
   && pip list \
   && icloud -h | head -n1 \
   && date
