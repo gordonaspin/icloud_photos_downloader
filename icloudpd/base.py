@@ -16,7 +16,6 @@ import click
 import urllib3
 
 from urllib3.exceptions import InsecureRequestWarning
-urllib3.disable_warnings(category=InsecureRequestWarning)
 
 from pyicloud.exceptions import (PyiCloud2SARequiredException,
                                  PyiCloudAPIResponseException,
@@ -25,7 +24,7 @@ from tqdm import tqdm
 from tzlocal import get_localzone
 
 # Must import the constants object so that we can mock values in tests.
-import icloudpd.constants as constants
+from icloudpd import constants
 from icloudpd import download, exif_datetime
 from icloudpd.authentication import authenticate
 from icloudpd.autodelete import autodelete_photos
@@ -34,47 +33,140 @@ from icloudpd.logger import setup_logger
 from icloudpd.logger import setup_database_logger
 from icloudpd.paths import build_download_dir, local_download_path
 from icloudpd.string_helpers import truncate_middle
-import icloudpd.database as database
+from icloudpd import database
 
+urllib3.disable_warnings(category=InsecureRequestWarning)
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 @click.command(context_settings=CONTEXT_SETTINGS, options_metavar="<options>")
 # @click.argument(
-@click.option("-d", "--directory",     help="Local directory that should be used for download", type=click.Path(exists=True), metavar="<directory>")
-@click.option("-u", "--username",      help="Your iCloud username or email address", metavar="<username>")
-@click.option("-p", "--password",      help="Your iCloud password (default: use PyiCloud keyring or prompt for password)", metavar="<password>")
-@click.option("--cookie-directory",    help="Directory to store cookies for authentication (default: ~/.pyicloud)", metavar="</cookie/directory>", default="~/.pyicloud")
-@click.option("--size",                help="Image size to download (default: original)", type=click.Choice(["original", "medium", "thumb"]), default="original")
-@click.option("--live-photo-size",     help="Live Photo video size to download (default: original)", type=click.Choice(["original", "medium", "thumb"]), default="original")
-@click.option("--recent",              help="Number of recent photos to download (default: download all photos)", type=click.IntRange(0))
-@click.option('--date-since',          help="Download only assets newer than date-since", type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%d-%H:%M:%S"]))
-@click.option('--newest',              help="Download only assets newer than newest asset date from local icloudpd.db. Will override --date-since value.", is_flag=True)
-@click.option("--until-found",         help="Download most recently added photos until we find x number of previously downloaded consecutive photos (default: download all photos)", type=click.IntRange(0))
-@click.option("-a", "--album",         help="Album to download (default: All Photos)", metavar="<album>", default="All Photos")
-@click.option("--all-albums",          help="Download all albums", is_flag=True)
-@click.option("--skip-smart-folders",  help="Exclude smart folders from listing or download: All Photos, Time-lapse, Videos, Slo-mo, Bursts, Favorites, Panoramas, Screenshots, Live, Recently Deleted, Hidden", is_flag=True)
-@click.option("--skip-All-Photos",     help="Exclude the smart folders 'All Photos' from listing or download", is_flag=True)
-@click.option("-l", "--list-albums",   help="Lists the avaliable albums and exits", is_flag=True)
-@click.option("-s", "--sort",          help="Sort album names (default: desc)", type=click.Choice(["asc", "desc"]), default="desc")
-@click.option("--skip-videos",         help="Don't download any videos (default: Download all photos and videos)", is_flag=True)
-@click.option("--skip-live-photos",    help="Don't download any live photos (default: Download live photos)", is_flag=True,)
-@click.option("--force-size",          help="Only download the requested size (default: download original if size is not available)", is_flag=True,)
-@click.option("--auto-delete",         help='Scans the "Recently Deleted" folder and deletes any files found in there. (If you restore the photo in iCloud, it will be downloaded again.)', is_flag=True)
-@click.option("--only-print-filenames",help="Only prints the filenames of all files that will be downloaded (not including files that are already downloaded). (Does not download or delete any files.)", is_flag=True)
-@click.option("--folder-structure",    help="Folder structure (default: {:%Y/%m/%d}). If set to 'none' all photos will just be placed into the download directory, if set to 'album' photos will be placed in a folder named as the album into the download directory", metavar="<folder_structure>", default="{:%Y/%m/%d}",)
-@click.option("--list-duplicates",     help="List files that are duplicates by the file content md5 hash", is_flag=True)
-@click.option("--create-json-listing", help="Creates a catalog.json file listing of the albums/assets processed in folder specified by directory option", is_flag=True)
-@click.option("--set-exif-datetime",   help="Write the DateTimeOriginal exif tag from file creation date, if it doesn't exist.", is_flag=True)
-@click.option("--smtp-username",       help="Your SMTP username, for sending email notifications when two-step authentication expires.", metavar="<smtp_username>")
-@click.option("--smtp-password",       help="Your SMTP password, for sending email notifications when two-step authentication expires.", metavar="<smtp_password>")
-@click.option("--smtp-host",           help="Your SMTP server host. Defaults to: smtp.gmail.com", metavar="<smtp_host>", default="smtp.gmail.com")
-@click.option("--smtp-port",           help="Your SMTP server port. Default: 587 (Gmail)", metavar="<smtp_port>", type=click.IntRange(0), default=587)
-@click.option("--smtp-no-tls",         help="Pass this flag to disable TLS for SMTP (TLS is required for Gmail)", metavar="<smtp_no_tls>", is_flag=True)
-@click.option("--notification-email",  help="Email address where you would like to receive email notifications. Default: SMTP username", metavar="<notification_email>")
-@click.option("--notification-script", help="Runs an external script when two factor authentication expires. (path required: /path/to/my/script.sh)", type=click.Path(), )
-@click.option("--log-level",           help="Log level (default: info)", type=click.Choice(["debug", "info", "error"]), default="info")
-@click.option("--no-progress-bar",     help="Disables the one-line progress bar and prints log messages on separate lines (Progress bar is disabled by default if there is no tty attached)", is_flag=True)
-@click.option("--unverified-https",    help="Overrides default https context with unverified https context", is_flag=True)
+@click.option("-d", "--directory",
+              help="Local directory that should be used for download",
+              type=click.Path(exists=True),
+              metavar="<directory>")
+@click.option("-u", "--username",
+              help="Your iCloud username or email address",
+              metavar="<username>")
+@click.option("-p", "--password",
+              help="Your iCloud password (default: use PyiCloud keyring or prompt for password)",
+              metavar="<password>")
+@click.option("--cookie-directory",
+              help="Directory to store cookies for authentication (default: ~/.pyicloud)",
+              metavar="</cookie/directory>",
+              default="~/.pyicloud")
+@click.option("--size",
+              help="Image size to download (default: original)",
+              type=click.Choice(["original", "medium", "thumb"]),
+              default="original")
+@click.option("--live-photo-size",
+              help="Live Photo video size to download (default: original)",
+              type=click.Choice(["original", "medium", "thumb"]),
+              default="original")
+@click.option("--recent",
+              help="Number of recent photos to download (default: download all photos)",
+              type=click.IntRange(0))
+@click.option('--date-since',
+              help="Download only assets newer than date-since",
+              type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%d-%H:%M:%S"]))
+@click.option('--newest',
+              help="Download assets newer than newest known. Overrides --date-since value.",
+              is_flag=True)
+@click.option("--until-found",
+              help="Download most recently added photos until we find x number of previously "
+                   "downloaded consecutive photos (default: download all photos)",
+              type=click.IntRange(0))
+@click.option("-a", "--album",
+              help="Album to download (default: All Photos)",
+              metavar="<album>",
+              default="All Photos")
+@click.option("--all-albums",
+              help="Download all albums",
+              is_flag=True)
+@click.option("--skip-smart-folders",
+              help="Exclude smart folders from listing or download: All Photos, Time-lapse, "\
+                   "Videos, Slo-mo, Bursts, Favorites, Panoramas, Screenshots, Live, "\
+                    "Recently Deleted, Hidden",
+              is_flag=True)
+@click.option("--skip-All-Photos",
+              help="Exclude the smart folders 'All Photos' from listing or download",
+              is_flag=True)
+@click.option("-l", "--list-albums",
+              help="Lists the avaliable albums and exits",
+              is_flag=True)
+@click.option("-s", "--sort",
+              help="Sort album names (default: desc)",
+              type=click.Choice(["asc", "desc"]),
+              default="desc")
+@click.option("--skip-videos",
+              help="Don't download any videos (default: Download all photos and videos)",
+              is_flag=True)
+@click.option("--skip-live-photos",
+              help="Don't download any live photos (default: Download live photos)",
+              is_flag=True,)
+@click.option("--force-size",
+              help="Only download the requested size (default: download original "\
+                   "if size is not available)",
+              is_flag=True,)
+@click.option("--auto-delete",
+              help="Scans the Recently Deleted folder and deletes any files found in there. "\
+                   "(If you restore the photo in iCloud, it will be downloaded again.)",
+              is_flag=True)
+@click.option("--only-print-filenames",
+              help="Only prints filenames that will be downloaded "\
+                   "(Does not download or delete any files.)",
+              is_flag=True)
+@click.option("--folder-structure",
+              help="Folder structure (default: {:%Y/%m/%d}). If set to 'none' all photos will "\
+                   "just be placed into the download directory, if set to 'album' photos will "\
+                   "be placed in a folder named as the album into the download directory",
+              metavar="<folder_structure>",
+              default="{:%Y/%m/%d}",)
+@click.option("--list-duplicates",
+              help="List files that are duplicates by the file content md5 hash",
+              is_flag=True)
+@click.option("--create-json-listing",
+              help="Creates a catalog.json file listing of the albums/assets processed in the "\
+                   "folder specified by directory option",
+                   is_flag=True)
+@click.option("--set-exif-datetime",
+              help="Set DateTimeOriginal exif tag from file creation date, if it doesn't exist.",
+              is_flag=True)
+@click.option("--smtp-username",
+              help="SMTP username for sending email when two-step authentication expires.",
+              metavar="<smtp_username>")
+@click.option("--smtp-password",
+              help="SMTP password for sending email when two-step authentication expires.",
+              metavar="<smtp_password>")
+@click.option("--smtp-host",
+              help="SMTP server host. Defaults to: smtp.gmail.com",
+              metavar="<smtp_host>",
+              default="smtp.gmail.com")
+@click.option("--smtp-port",
+              help="SMTP server port. Default: 587 (Gmail)",
+              metavar="<smtp_port>",
+              type=click.IntRange(0),
+              default=587)
+@click.option("--smtp-no-tls",
+              help="Pass this flag to disable TLS for SMTP (TLS is required for Gmail)",
+              metavar="<smtp_no_tls>",
+              is_flag=True)
+@click.option("--notification-email",
+              help="Email address to receive email notifications. Default: SMTP username",
+              metavar="<notification_email>")
+@click.option("--notification-script",
+              help="Runs an external script when two factor authentication expires. "\
+              "(path required: /path/to/my/script.sh)",
+              type=click.Path(), )
+@click.option("--log-level",
+              help="Log level (default: info)",
+              type=click.Choice(["debug", "info", "error"]),
+              default="info")
+@click.option("--no-progress-bar",
+              help="Disables the one-line progress bar and prints log messages on separate lines)",
+              is_flag=True)
+@click.option("--unverified-https",
+              help="Overrides default https context with unverified https context",
+              is_flag=True)
 
 @click.version_option()
 # pylint: disable-msg=too-many-arguments,too-many-statements
@@ -114,7 +206,7 @@ def main(
         notification_email,
         log_level,
         no_progress_bar,
-        notification_script,         # pylint: disable=W0613
+        notification_script,
         unverified_https,
 ):
     """Download all iCloud photos to a local directory"""
@@ -140,40 +232,40 @@ def main(
         elif log_level == "error":
             logger.setLevel(logging.ERROR)
 
-    logger.info(f"directory: {directory}")
-    logger.info(f"username: {username}")
-    logger.info(f"cookie_directory: {cookie_directory}")
-    logger.info(f"size: {size}")
-    logger.info(f"live_photo_size {live_photo_size}")
-    logger.info(f"recent: {recent}")
-    logger.info(f"date_since: {date_since}")
-    logger.info(f"newest: {newest}")
-    logger.info(f"until_found: {until_found}")
-    logger.info(f"album: {album}")
-    logger.info(f"all_albums: {all_albums}")
-    logger.info(f"skip_smart_folders: {skip_smart_folders}")
-    logger.info(f"skip_all_photos: {skip_all_photos}")
-    logger.info(f"list_albums: {list_albums}")
-    logger.info(f"sort: {sort}")
-    logger.info(f"skip_videos: {skip_videos}")
-    logger.info(f"skip_live_photos: {skip_live_photos}")
-    logger.info(f"force_size: {force_size}")
-    logger.info(f"auto_delete: {auto_delete}")
-    logger.info(f"only_print_filenames: {only_print_filenames}")
-    logger.info(f"folder_structure: {folder_structure}")
-    logger.info(f"list_duplicates: {list_duplicates}")
-    logger.info(f"set_exif_datetime: {set_exif_datetime}")
-    logger.info(f"smtp_username: {smtp_username}")
-    logger.info(f"smtp_password: {smtp_password}")
-    logger.info(f"smtp_host: {smtp_host}")
-    logger.info(f"smtp_port: {smtp_port}")
-    logger.info(f"smtp_no_tls: {smtp_no_tls}")
-    logger.info(f"notification_email: {notification_email}")
-    logger.info(f"log_level: {log_level}")
-    logger.info(f"no_progress_bar: {no_progress_bar}")
-    logger.info(f"notification_script: {notification_script}")
-    logger.info(f"unverified_https: {unverified_https}")
-        
+    logger.info("directory: %s", directory)
+    logger.info("username: %s", username)
+    logger.info("cookie_directory: %s", cookie_directory)
+    logger.info("size: %s", size)
+    logger.info("live_photo_size %s", live_photo_size)
+    logger.info("recent: %s", recent)
+    logger.info("date_since: %s", date_since)
+    logger.info("newest: %s", newest)
+    logger.info("until_found: %s", until_found)
+    logger.info("album: %s", album)
+    logger.info("all_albums: %s", all_albums)
+    logger.info("skip_smart_folders: %s", skip_smart_folders)
+    logger.info("skip_all_photos: %s", skip_all_photos)
+    logger.info("list_albums: %s", list_albums)
+    logger.info("sort: %s", sort)
+    logger.info("skip_videos: %s", skip_videos)
+    logger.info("skip_live_photos: %s", skip_live_photos)
+    logger.info("force_size: %s", force_size)
+    logger.info("auto_delete: %s", auto_delete)
+    logger.info("only_print_filenames: %s", only_print_filenames)
+    logger.info("folder_structure: %s", folder_structure)
+    logger.info("list_duplicates: %s", list_duplicates)
+    logger.info("set_exif_datetime: %s", set_exif_datetime)
+    logger.info("smtp_username: %s", smtp_username)
+    logger.info("smtp_password: %s", smtp_password)
+    logger.info("smtp_host: %s", smtp_host)
+    logger.info("smtp_port: %s", smtp_port)
+    logger.info("smtp_no_tls: %s", smtp_no_tls)
+    logger.info("notification_email: %s", notification_email)
+    logger.info("log_level: %s", log_level)
+    logger.info("no_progress_bar: %s", no_progress_bar)
+    logger.info("notification_script: %s", notification_script)
+    logger.info("unverified_https: %s", unverified_https)
+
     # check required directory param only if not list albums
     if not list_albums and not directory:
         print('--directory or --list-albums are required')
@@ -206,11 +298,11 @@ def main(
                     break
         else:
             logger.info("there are no duplicates")
-            
+
     if not username and directory and list_duplicates:
         print_duplicates(db.fetch_duplicates())
         sys.exit(constants.ExitCode.EXIT_NORMAL.value)
-            
+
     raise_authorization_exception = (
         smtp_username is not None
         or notification_email is not None
@@ -265,10 +357,10 @@ def main(
     logger.info(f"there are {len(photos)} assets in {len(albums)} albums in your library")
 
     album_titles = [str(a) for a in albums]
-    album_titles.sort(reverse=(sort == 'desc'))
+    album_titles.sort(reverse = sort=='desc')
     if list_albums:
         if skip_smart_folders:
-            album_titles = [album for album in album_titles if album not in icloud.photos.SMART_FOLDERS.keys()]
+            album_titles = [_ for _ in album_titles if _ not in icloud.photos.SMART_FOLDERS] #.keys()
         print(*album_titles, sep="\n")
         sys.exit(constants.ExitCode.EXIT_NORMAL.value)
 
@@ -326,7 +418,7 @@ def main(
                 with open(path, 'rb') as f:
                     data = f.read()    
                     return hashlib.md5(data).hexdigest()
-                
+
             def get_photo_metadata(photo, album, path, md5):
                 d = {}
                 d['id'] = photo.id
@@ -350,7 +442,7 @@ def main(
             if photo.item_type != "image" and photo.item_type != "movie":
                 logger.set_tqdm_description(f"{album}: skipping {photo.filename}, only downloading photos and videos. (Item type was: {photo.item_type})")
                 return
-            
+
             try:
                 created_date = photo.created.astimezone(get_localzone())
             except (ValueError, OSError):
@@ -488,7 +580,7 @@ def main(
                             photo_metadata['file_size'] = os.stat(lp_download_path).st_size
 
             return photo_metadata
-                    
+
         amd = {}
         amd['album_name'] = album
         amd['assets'] = []
@@ -521,7 +613,10 @@ def main(
         # Skip the one-line progress bar if we're only printing the filenames,
         # or if the progress bar is explicity disabled,
         # or if this is not a terminal (e.g. cron or piping output to file)
-        if not os.environ.get("FORCE_TQDM") and (only_print_filenames or no_progress_bar or not sys.stdout.isatty()):
+        if not os.environ.get("FORCE_TQDM") \
+                    and (only_print_filenames\
+                    or no_progress_bar\
+                    or not sys.stdout.isatty()):
             photos_enumerator = photos
             logger.set_tqdm(None)
         else:
@@ -552,22 +647,19 @@ def main(
         if not reached_date_since:
             logger.info(f"{album}: processed all assets")
 
-        if auto_delete:
-            autodelete_photos(icloud, folder_structure, directory)
-
         return amd
-            
+
     cmd = {}
     cmd['icloud_username'] = username
     cmd['directory'] = directory
     cmd['albums'] = []
-    if all_albums == True:
+    if all_albums:
         if skip_all_photos:
             logger.info("removing All Photos from the list of albums to process")
             album_titles = [album for album in album_titles if album != "All Photos"]
         if skip_smart_folders:
             logger.info("removing smart folders from the list of albums to process")
-            album_titles = [album for album in album_titles if album not in icloud.photos.SMART_FOLDERS.keys()]
+            album_titles = [album for album in album_titles if album not in icloud.photos.SMART_FOLDERS] #.keys()
     else:
         album_titles = [album]
 
@@ -578,6 +670,9 @@ def main(
     for album in album_titles:
         amd = download_album(album)
         cmd['albums'].append(amd)
+
+    if auto_delete:
+        autodelete_photos(icloud, folder_structure, directory)
 
     if create_json_listing:
         json_file_path = directory + "/" + "catalog.json"
